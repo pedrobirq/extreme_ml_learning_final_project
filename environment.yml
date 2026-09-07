@@ -1,0 +1,24 @@
+name: titanic-housing
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - tqdm
+  - pyyaml
+  - joblib
+  - pip:
+      - xgboost
+      - lightgbm
+      - catboost
+      - optuna
+      - mlflow
+      - omegaconf
