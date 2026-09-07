@@ -1,4 +1,4 @@
-# Common pipeline for Titanic and House pricing datasets
+# Common pipeline for Titanic and House prices datasets
 ## Getting started 
 Окружение и зависимости подтягиваются через:
 ```
