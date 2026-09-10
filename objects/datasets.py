@@ -48,12 +48,6 @@ class TitanicDatasetPrepare:
         # print(self.df.head())
         self.df = self.df.drop(columns=['Parch', 'SibSp', 'Name', 'Ticket', 'Cabin', 'PassengerId', 'Pclass', 'Embarked', 'Initial'])
 
-        if self.is_train:
-            y = self.df['Survived']
-            X = self.df.drop(columns=['Survived'])
-        else:
-            X = self.df
-
         return self.df
 
     def to_xy(self):
