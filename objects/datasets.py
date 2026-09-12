@@ -52,7 +52,7 @@ class TitanicDatasetPrepare:
 
     def to_xy(self):
         if 'Name' in self.df.columns:
-            raise ValueError("Dataset is not prepared yet. Please call prepare_dataset() first.")
+            self.prepare_dataset()
         if self.is_train:
             y = self.df['Survived'].to_numpy()
             X = self.df.drop(columns=['Survived']).to_numpy()
