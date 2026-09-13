@@ -6,7 +6,7 @@ conf = {
         'data_installed': True,
         'random_state': 52,
         'test_size': 0.2,
-        
+        'learning_rate': 0.1,
     },
     'paths': {
         'titanic_train': 'objects/titanic/train.csv',
@@ -47,7 +47,7 @@ conf = {
             'CatBoostClassifier': {
                 'iterations': 100,
                 'depth': 4,
-                'learning_rate': 0.1,
+                'learning_rate': '${general.learning_rate}',
                 'loss_function': 'Logloss',
                 'verbose': False,
                 'l2_leaf_reg': 5,
@@ -71,7 +71,7 @@ conf = {
             'XGBClassifier': {
                 'n_estimators': 100,
                 'max_depth': 4,
-                'learning_rate': 0.1,
+                'learning_rate': '${general.learning_rate}',
                 'objective': 'binary:logistic',
                 'min_child_weight': 3,
                 'subsample': 0.8,

@@ -22,12 +22,12 @@ import utils
 
 
 
-def train_classic_ml(model_class, params, task):
-    if task == 'titanic':
-        preparer = objects.datasets.TitanicDatasetPrepare(config.paths.titanic_train)
-        X, y = preparer.to_xy()
+def train_classic_ml(model_class, params, task, X_train, X_test, y_train):
+    # if task == 'titanic':
+    #     preparer = objects.datasets.TitanicDatasetPrepare(config.paths.titanic_train)
+    #     X, y = preparer.to_xy()
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=config.general.test_size, random_state=config.general.random_state, stratify=y)
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=config.general.test_size, random_state=config.general.random_state, stratify=y)
 
     skf = StratifiedKFold(n_splits=config.cv.k_forlds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
     models = []
@@ -47,14 +47,14 @@ def train_classic_ml(model_class, params, task):
 
     train_metrics_avg = utils.aggregate_cv_metrics(train_metrics)
 
-    test_metrics = []
-    for model in models:
-        y_pred = model.predict(X_test)
-        test_metrics.append(utils.save_cv_metrics(y_test, y_pred))
+    # test_metrics = []
+    # for model in models:
+    #     y_pred = model.predict(X_test)
+    #     test_metrics.append(utils.save_cv_metrics(y_test, y_pred))
 
-    test_metrics_avg = utils.aggregate_cv_metrics(test_metrics)
+    # test_metrics_avg = utils.aggregate_cv_metrics(test_metrics)
 
-    return models, train_metrics, test_metrics
+    return models, train_metrics
 
 
 MODEL_REGISTRY = {
@@ -68,15 +68,15 @@ MODEL_REGISTRY = {
 }
 
 
-def run():
+def run(task: str, data: dict):
     for model_name, params in config.classic_ml_models.classification.items():
-        models, train_metrics, test_metrics = train_classic_ml(MODEL_REGISTRY[model_name], params, 'titanic')
+        models, train_metrics = train_classic_ml(MODEL_REGISTRY[model_name], params, task, **data)
 
         print('\n', '=' * 10, model_name, '=' * 10)
         agg_train = utils.aggregate_cv_metrics(train_metrics)
-        agg_test = utils.aggregate_cv_metrics(test_metrics)
+        # agg_test = utils.aggregate_cv_metrics(test_metrics)
 
-        print('Train log\n', agg_train, '\nTest log\n', agg_test)
+        print('Train log\n', agg_train)
 
 
 if __name__ == '__main__':
