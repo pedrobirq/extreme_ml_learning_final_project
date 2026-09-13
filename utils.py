@@ -1,6 +1,10 @@
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+
+# Preprocessing
 
 
 def make_one_hot_encoding(series: pd.Series, drop_first=False) -> pd.DataFrame:
@@ -82,3 +86,29 @@ def titanic_fill_nulls(df: pd.DataFrame, is_train=True) -> pd.DataFrame:
         df.loc[(df['Fare'].isnull()), 'Fare'] = df.groupby('Pclass')['Fare'].mean()[3]
 
     return df
+
+
+
+# Training
+
+def save_cv_metrics(y_true, y_pred) -> dict:
+    """
+    Returns a dictinory like: 
+    {
+        'Accuracy': ,
+        'Precision': ,
+        'Recall': ,
+        'F1': 
+    }
+    """
+    return {'Accuracy': accuracy_score(y_true, y_pred), 'Precision': precision_score(y_true, y_pred), 'Recal': recall_score(y_true, y_pred), 'F1': f1_score(y_true, y_pred)}
+
+
+def aggregate_cv_metrics(metrics: dict):
+    """
+    
+    """
+    metrics_df = pd.DataFrame(metrics)
+    metrics_avg = pd.DataFrame(metrics_df.to_numpy().mean(axis=0).reshape(1, -1), columns=metrics_df.columns)
+
+    return metrics_avg
