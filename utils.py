@@ -1,7 +1,15 @@
 import numpy as np
 import pandas as pd
+import os
+
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from scipy.stats import mode
+
+import torch
+from torch.utils.data import DataLoader
+from objects.datasets import TitanicDatasetPrepareNN, random_split
+from config import config
 
 
 # Preprocessing
@@ -88,6 +96,19 @@ def titanic_fill_nulls(df: pd.DataFrame, is_train=True) -> pd.DataFrame:
     return df
 
 
+def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
+    if task == 'titanic':
+        data_train = TitanicDatasetPrepareNN(df_train)
+        data_test = TitanicDatasetPrepareNN(df_test)
+
+        data_train, data_val = random_split(data_train, [0.8, 0.2], 
+                                            generator=torch.Generator().manual_seed(config.general.random_state))
+
+        train_loader = DataLoader(data_train, config.general.batch_size, shuffle=True)
+        val_loader = DataLoader(data_val, config.general.batch_size, shuffle=False)
+        test_loader = DataLoader(data_test, config.general.batch_size, shuffle=False)
+
+        return train_loader, val_loader, test_loader
 
 # Training
 
@@ -101,7 +122,11 @@ def save_cv_metrics(y_true, y_pred) -> dict:
         'F1': 
     }
     """
-    return {'Accuracy': accuracy_score(y_true, y_pred), 'Precision': precision_score(y_true, y_pred), 'Recal': recall_score(y_true, y_pred), 'F1': f1_score(y_true, y_pred)}
+    return {'accuracy': accuracy_score(y_true, y_pred), 'precision': precision_score(y_true, y_pred), 'recal': recall_score(y_true, y_pred), 'f1': f1_score(y_true, y_pred)}
+
+
+def metrics_to_string(epoch, epochs, stage, loss, accuracy, precision, recal, f1):
+    return f"{stage.upper}: epoch [{epoch+1}/{epochs}], loss={loss:.4f}, accuracy={accuracy:.4f}, precision={precision:.4f}, recal={recal:.4f}, f1={f1:.4f}"
 
 
 def aggregate_cv_metrics(metrics: dict):
@@ -112,3 +137,31 @@ def aggregate_cv_metrics(metrics: dict):
     metrics_avg = pd.DataFrame(metrics_df.to_numpy().mean(axis=0).reshape(1, -1), columns=metrics_df.columns)
 
     return metrics_avg
+
+
+def make_classification_prediction(X_test, models):
+
+    y_preds = []
+    for model in models:
+        y_pred = model.predict(X_test)
+        y_preds.append(y_pred)
+
+    y_preds = np.array(y_preds).T
+    final_predictions = mode(y_preds, axis=1).mode
+
+    return final_predictions
+
+
+def save_predictions(predictions, indexes, file_name, column_names):
+
+    file_name += '.csv'
+
+    df = pd.DataFrame({column_names[0]: indexes,
+                       column_names[1]: predictions})
+    
+    if os.path.exists(file_name) and os.path.isfile(file_name):
+        os.remove(file_name)
+
+    df.to_csv(file_name, index=False)
+
+

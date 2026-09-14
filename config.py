@@ -1,4 +1,5 @@
 from omegaconf import OmegaConf
+import torch
 
 conf = {
     'general': {
@@ -7,6 +8,8 @@ conf = {
         'random_state': 52,
         'test_size': 0.2,
         'learning_rate': 0.1,
+        'device': 'cuda' if torch.cuda.is_available() else 'cpu',
+        'batch_size': 16
     },
     'paths': {
         'titanic_train': 'objects/titanic/train.csv',
