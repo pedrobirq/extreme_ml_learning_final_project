@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from scipy.stats import mode
@@ -98,11 +99,16 @@ def titanic_fill_nulls(df: pd.DataFrame, is_train=True) -> pd.DataFrame:
 
 def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
     if task == 'titanic':
-        data_train = TitanicDatasetPrepareNN(df_train)
-        data_test = TitanicDatasetPrepareNN(df_test)
+        df_tr, df_val = train_test_split(
+            df_train,
+            test_size=0.2,
+            stratify=df_train['Survived'],
+            random_state=config.general.random_state
+        )
 
-        data_train, data_val = random_split(data_train, [0.8, 0.2], 
-                                            generator=torch.Generator().manual_seed(config.general.random_state))
+        data_train = TitanicDatasetPrepareNN(df_tr)
+        data_val = TitanicDatasetPrepareNN(df_val)
+        data_test = TitanicDatasetPrepareNN(df_test)
 
         train_loader = DataLoader(data_train, config.general.batch_size, shuffle=True)
         val_loader = DataLoader(data_val, config.general.batch_size, shuffle=False)
@@ -125,8 +131,8 @@ def save_cv_metrics(y_true, y_pred) -> dict:
     return {'accuracy': accuracy_score(y_true, y_pred), 'precision': precision_score(y_true, y_pred), 'recal': recall_score(y_true, y_pred), 'f1': f1_score(y_true, y_pred)}
 
 
-def metrics_to_string(epoch, epochs, stage, loss, accuracy, precision, recal, f1):
-    return f"{stage.upper}: epoch [{epoch+1}/{epochs}], loss={loss:.4f}, accuracy={accuracy:.4f}, precision={precision:.4f}, recal={recal:.4f}, f1={f1:.4f}"
+def metrics_to_string(stage, loss, accuracy, precision, recal, f1):
+    return f"{stage.upper()}: loss={loss:.4f}, accuracy={accuracy:.4f}, precision={precision:.4f}, recal={recal:.4f}, f1={f1:.4f}"
 
 
 def aggregate_cv_metrics(metrics: dict):
@@ -165,3 +171,39 @@ def save_predictions(predictions, indexes, file_name, column_names):
     df.to_csv(file_name, index=False)
 
 
+class EarlyStopping:
+	""" Класс отслеживания значимого изменения таргетированного атрибута модели """
+	def __init__(self, mode='min', patience=10, threshold=1e-4, threshold_mode='rel'):
+		self.mode = mode
+		self.patience = patience
+		self.threshold = threshold
+		self.threshold_mode = threshold_mode
+		self.count = 0
+		self.best = None
+		
+	def __call__(self, tracked_parameter):
+		current = float(tracked_parameter)
+		if self.best is None:
+			self.best = current
+			return False
+		
+		if self.changed_better(current, self.best):
+			self.best = current
+			self.count = 0
+		else:
+			self.count += 1
+		
+		return self.count >= self.patience
+		
+	def changed_better(self, current, best):
+		if self.mode == 'min' and self.threshold_mode == 'rel':
+			return current < best - best * self.threshold
+		
+		if self.mode == 'min' and self.threshold_mode == 'abs':
+			return current < best - self.threshold
+		
+		if self.mode == 'max' and self.threshold_mode == 'rel':
+			return current < best + best * self.threshold
+		
+		else: # self.mode == 'max' and self.threshold_mode == 'abs'
+			return current < best + self.threshold

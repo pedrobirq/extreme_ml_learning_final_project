@@ -8,8 +8,10 @@ conf = {
         'random_state': 52,
         'test_size': 0.2,
         'learning_rate': 0.1,
-        'device': 'cpu',
-        'batch_size': 16
+        'device': 'cuda',
+        'batch_size': 16,
+        'epochs': 150,
+        'save_predictions': False,
     },
     'paths': {
         'titanic_train': 'objects/titanic/train.csv',
@@ -90,9 +92,31 @@ conf = {
             'SimpNN': {
                 'input': 12,
                 'output': 1,
-                'hidden_size': 128
-            }
-        }
+                'hidden_size': 64
+            },
+            'MoreLayersNN': {
+                'input': 12,
+                'output': 1,
+                'hidden_size1': 64,
+                'hidden_size2': 32
+            },
+            'ImprovedNN': {
+                'input': 12,
+                'output': 1,
+                'hidden_size1': 128,
+                'hidden_size2': 64
+            },
+        },
+    },
+    'schedulers': {
+        'step_lr': {
+                    'step_size': 5,
+                    'gamma': 0.97
+                }
+    },
+    'early_stopping': {
+        'threshold': 1e-4,
+        'patience': 15
     }
 }
 

@@ -8,6 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
+from objects.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
@@ -22,6 +23,9 @@ import utils
 
 import torch
 from torch import nn
+from torch.nn import BCEWithLogitsLoss
+from torch.optim import Adam
+from torch.optim.lr_scheduler import StepLR
 from tqdm.auto import tqdm
 
 
@@ -64,18 +68,8 @@ def train_classic_ml(model_class, params, task, X_train, X_test, y_train):
     return models, train_metrics, y_test
 
 
-MODEL_REGISTRY = {
-    'LogisticRegression': LogisticRegression,
-    'KNeighborsClassifier': KNeighborsClassifier,
-    'DecisionTreeClassifier': DecisionTreeClassifier,
-    'RandomForestClassifier': RandomForestClassifier,
-    'CatBoostClassifier': CatBoostClassifier,
-    'LGBMClassifier': LGBMClassifier,
-    'XGBClassifier': XGBClassifier,
-}
 
-
-def train_NN(model_class, params, task, train_loader, test_loader, val_loader, optimizer_class, loss_class, epochs, verbose=False, scheduler=None):
+def train_NN(model_class, params, task, train_loader, test_loader, val_loader, optimizer_class, loss_class, epochs, verbose=False, scheduler_class=None, early_stopping=None):
     train_loss = []
     train_f1 = []
     train_accuracy = []
@@ -93,6 +87,8 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
     model = model_class(**params).to(config.general.device)
     optimizer = optimizer_class(model.parameters(), lr=config.general.learning_rate)
     loss = loss_class()
+    if scheduler_class:
+        scheduler = scheduler_class(optimizer, **config.schedulers.step_lr)
 
     pbar_train = tqdm(total=len(train_loader), desc="Train", position=0, leave=True)
     pbar_val = tqdm(total=len(val_loader), desc="Val  ", position=1, leave=True)
@@ -195,8 +191,14 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
         val_precision.append(val_metrics['precision'])
         val_recal.append(val_metrics['recal'])
 
-        if scheduler is not None:
-            scheduler.step(mean_val_loss)    # для ReduceLROnPlayeau
+        if early_stopping and early_stopping(mean_val_loss):
+            pbar_train.close()
+            pbar_val.close()
+            print(f"Обучение остановлено на {epoch+1} эпохе.")
+            break
+
+        if scheduler_class is not None:
+            scheduler.step()    
             curr_lr = scheduler._last_lr[0]   
             lr_list.append(curr_lr)
 
@@ -204,21 +206,57 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
     pbar_val.close()
 
     log = {'train loss': train_loss, 'train accuracy': train_accuracy, 'train precision': train_precision, 'train recal': train_recal, 'train f1': train_f1,
-           'val loss': val_loss, 'val accuracy': val_accuracy, 'val precision': val_precision, 'val recal': val_recal, 'val f1': val_f1,}
+           'val loss': val_loss, 'val accuracy': val_accuracy, 'val precision': val_precision, 'val recal': val_recal, 'val f1': val_f1, 'learning rates': lr_list}
     return log
 
 
-def run(task: str, data: dict, test_indexes):
+MODEL_REGISTRY = {
+    'LogisticRegression': LogisticRegression,
+    'KNeighborsClassifier': KNeighborsClassifier,
+    'DecisionTreeClassifier': DecisionTreeClassifier,
+    'RandomForestClassifier': RandomForestClassifier,
+    'CatBoostClassifier': CatBoostClassifier,
+    'LGBMClassifier': LGBMClassifier,
+    'XGBClassifier': XGBClassifier,
+    'SimpNN': SimpNN,
+    'MoreLayersNN': MoreLayersNN,
+    'ImprovedNN': ImprovedNN
+}
+
+
+# def run(task: str, data: dict, test_indexes):
+def run(task, train_preparer, test_preparer, save_predictions):
+    df_train = train_preparer.prepare_dataset()
+    df_test = test_preparer.prepare_dataset(train_preparer.statistics)
+
+    X_t_train, y_t_train = train_preparer.to_xy()
+    X_t_test = test_preparer.to_xy()
+
+    if task == 'titanic':
+        test_indexes = test_preparer.PassengerId
+
+    data = {'X_train': X_t_train, 'X_test': X_t_test, 'y_train': y_t_train}
+    train_loader, val_loader, test_loader = utils.make_dataloaders(task, df_train, df_test)
+
     for model_name, params in config.classic_ml_models.classification.items():
         models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[model_name], params, task, **data)
 
         print('\n', '=' * 10, model_name, '=' * 10)
         agg_train = utils.aggregate_cv_metrics(train_metrics)
-        # agg_test = utils.aggregate_cv_metrics(test_metrics)
 
         print('Train log\n', agg_train)
-        if task == 'titanic':
+        if save_predictions:
             utils.save_predictions(y_test, test_indexes, f'objects/{task}/{model_name}', column_names=['PassengerId', 'Survived'])
+
+    for model_name, params in config.nn_models.classification.items():
+        print('\n', '=' * 10, model_name, '=' * 10)
+        early_stopping = utils.EarlyStopping(patience=config.early_stopping.patience, threshold=config.early_stopping.threshold)
+        log = train_NN(MODEL_REGISTRY[model_name], params, task, train_loader, test_loader, val_loader, 
+                       Adam, BCEWithLogitsLoss, config.general.epochs, verbose=True, scheduler_class=StepLR, early_stopping=early_stopping)
+        agg_metrics = utils.metrics_to_string('validation', log['val loss'][-1], log['val accuracy'][-1], log['val precision'][-1], log['val recal'][-1], log['val f1'][-1])
+
+        print('Train log\n', agg_metrics)
+
 
 if __name__ == '__main__':
     run()
