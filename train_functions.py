@@ -21,7 +21,8 @@ from config import config
 import utils
 
 import torch
-from tqdm import tqdm
+from torch import nn
+from tqdm.auto import tqdm
 
 
 
@@ -74,7 +75,7 @@ MODEL_REGISTRY = {
 }
 
 
-def train_NN(model_class, params, task, train_loader, test_loader, val_loader, optimizer, loss, epochs, verbose=False, scheduler=None):
+def train_NN(model_class, params, task, train_loader, test_loader, val_loader, optimizer_class, loss_class, epochs, verbose=False, scheduler=None):
     train_loss = []
     train_f1 = []
     train_accuracy = []
@@ -89,15 +90,25 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
 
     lr_list = []
 
-    model = model_class(**params)
+    model = model_class(**params).to(config.general.device)
+    optimizer = optimizer_class(model.parameters(), lr=config.general.learning_rate)
+    loss = loss_class()
+
+    pbar_train = tqdm(total=len(train_loader), desc="Train", position=0, leave=True)
+    pbar_val = tqdm(total=len(val_loader), desc="Val  ", position=1, leave=True)
 
     for epoch in range(epochs):
+
+        pbar_train.reset(total=len(train_loader))
+        pbar_val.reset(total=len(val_loader))
+
         model.train()
-        train_loop = tqdm(train_loader, leave=True)
+        # train_loop = tqdm(train_loader)
         running_train_loss = []        # значения лоса на обучении
         train_targets = []
         train_predictions = [] 
-        for x, targets in train_loop:
+        # for x, targets in train_loop:
+        for x, targets in train_loader:
             # Подготовка данных
             x = x.to(config.general.device)
 
@@ -105,11 +116,12 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
 
             # Прямой проход и расчет лоса
             pred = model(x)
+
             curr_loss = loss(pred, targets)
 
             # Обратный проход
             optimizer.zero_grad()
-            loss.backward()
+            curr_loss.backward()
 
             # Шаг оптимизации
             optimizer.step()
@@ -117,51 +129,65 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
             # Сохранение значения лоса
             running_train_loss.append(curr_loss.item())
 
-            train_predictions.extend(pred.reshape((1, -1)).tolist())
-            train_targets.extend(targets.reshape((1, -1)).tolist())
+            if task == 'titanic':
+                prob = torch.sigmoid(pred)
+                pred = (prob > 0.5).int()
 
-        # Вычисление метрики f1
-        # TODO: implement f1 score
-        running_train_f1 = 0
+            train_predictions.extend(pred.squeeze().tolist())
+            train_targets.extend(targets.squeeze().tolist())
+
+            pbar_train.update(1)
+            # Вывод средней ошибки на прогресбар tqdm
+            if verbose:
+                pbar_train.set_description(f"Epoch {epoch+1}/{epochs} [Train]")
+                pbar_train.set_postfix({"loss": f"{curr_loss.item():.4f}"})
+
+        # Вычисление метрик
+        train_metrics =  utils.save_cv_metrics(train_targets, train_predictions)
 
         mean_train_loss = sum(running_train_loss) / len(running_train_loss)
 
-        # Вывод средней ошибки на прогресбар tqdm
-        if verbose:
-            train_loop.set_description(f"Epoch [{epoch+1}/{epochs}], train_loss={mean_train_loss:.4f}, train f1={running_train_f1:.4f}")
-
         train_loss.append(mean_train_loss)
-        train_f1.append(running_train_f1)
+        train_accuracy.append(train_metrics['accuracy'])
+        train_precision.append(train_metrics['precision'])
+        train_recal.append(train_metrics['recal'])
+        train_f1.append(train_metrics['f1'])
 
+        model.eval()
+        running_val_loss = []
+        val_targets = []
+        val_predictions = []
         # Оценка тренировки модели
         with torch.no_grad():
-            running_val_loss = []
-            val_targets = []
-            val_predictions = []
-            val_loop = tqdm(val_loader)
-            for x, targets in val_loop:
-                x = x.reshape(-1, 28 * 28).to(config.general.device)
+            # val_loop = tqdm(val_loader)
+            # for x, targets in val_loop:
+            for x, targets in val_loader:
+                x = x.to(config.general.device)
 
-                targets = targets.reshape(-1).to(torch.int32)
-                targets = torch.eye(10)[targets].to(config.general.device)
+                targets = targets.to(config.general.device)
 
                 pred = model(x)
+
                 curr_loss = loss(pred, targets)
 
-                running_val_loss.append(loss.item())
+                running_val_loss.append(curr_loss.item())
 
-                val_predictions.extend(pred.reshape((1, -1)).tolist())
-                val_targets.extend(targets.reshape((1, -1)).tolist())
+                if task == 'titanic':
+                    prob = torch.sigmoid(pred)
+                    pred = (prob > 0.5).int()
+
+                val_predictions.extend(pred.squeeze().tolist())
+                val_targets.extend(targets.squeeze().tolist())
+
+                pbar_val.update(1)
+                if verbose:
+                    pbar_val.set_description(f"Epoch {epoch+1}/{epochs} [Val]")
+                    pbar_val.set_postfix({"loss": f"{curr_loss.item():.4f}"})
 
         # Вычисление метрик
         val_metrics = utils.save_cv_metrics(val_targets, val_predictions)
-        running_val_f1 = 0
 
         mean_val_loss = sum(running_val_loss) / len(running_val_loss)
-
-        # Вывод средней ошибки на прогресбар tqdm
-        if verbose:
-            val_loop.set_description(utils.metrics_to_string(epoch, epochs, 'validation', mean_val_loss, **val_metrics))
 
         val_loss.append(mean_val_loss)
         val_f1.append(val_metrics['f1'])
@@ -169,10 +195,17 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
         val_precision.append(val_metrics['precision'])
         val_recal.append(val_metrics['recal'])
 
-    if scheduler is not None:
-        scheduler.step(mean_val_loss)    # для ReduceLROnPlayeau
-        curr_lr = scheduler._last_lr[0]   
-        lr_list.append(curr_lr)
+        if scheduler is not None:
+            scheduler.step(mean_val_loss)    # для ReduceLROnPlayeau
+            curr_lr = scheduler._last_lr[0]   
+            lr_list.append(curr_lr)
+
+    pbar_train.close()
+    pbar_val.close()
+
+    log = {'train loss': train_loss, 'train accuracy': train_accuracy, 'train precision': train_precision, 'train recal': train_recal, 'train f1': train_f1,
+           'val loss': val_loss, 'val accuracy': val_accuracy, 'val precision': val_precision, 'val recal': val_recal, 'val f1': val_f1,}
+    return log
 
 
 def run(task: str, data: dict, test_indexes):

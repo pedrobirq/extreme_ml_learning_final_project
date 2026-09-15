@@ -8,7 +8,7 @@ conf = {
         'random_state': 52,
         'test_size': 0.2,
         'learning_rate': 0.1,
-        'device': 'cuda' if torch.cuda.is_available() else 'cpu',
+        'device': 'cpu',
         'batch_size': 16
     },
     'paths': {
@@ -84,6 +84,15 @@ conf = {
                 'random_state': '${general.random_state}'
             }
         },
+    },
+    'nn_models': {
+        'classification': {
+            'SimpNN': {
+                'input': 12,
+                'output': 1,
+                'hidden_size': 128
+            }
+        }
     }
 }
 
