@@ -16,6 +16,8 @@ conf = {
     'paths': {
         'titanic_train': 'objects/titanic/train.csv',
         'titanic_test': 'objects/titanic/test.csv',
+        'houses_train': 'objects/houses/train.csv',
+        'houses_test': 'objects/houses/test.csv'
     },
     'cat_features': {
         'titanic': ['Pclass', 'Embarked', 'Initial'],

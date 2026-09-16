@@ -13,6 +13,12 @@ from objects.datasets import TitanicDatasetPrepareNN, random_split
 from config import config
 
 
+# EDA
+def check_nulls(df: pd.DataFrame) -> pd.DataFrame:
+    missing = df.isnull().sum().sort_values(ascending=False)
+    return missing[missing > 0]
+
+
 # Preprocessing
 
 
