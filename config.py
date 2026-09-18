@@ -40,7 +40,7 @@ conf = {
        'BedroomAbvGr', 'KitchenAbvGr', 'TotRmsAbvGrd', 'Fireplaces',
        'GarageYrBlt', 'GarageCars', 'GarageArea', 'WoodDeckSF', 'OpenPorchSF',
        'EnclosedPorch', '3SsnPorch', 'ScreenPorch', 'PoolArea', 'MiscVal',
-       'MoSold', 'YrSold', 'SalePrice']
+       'MoSold', 'YrSold']
     },
     'targets': {
         'titanic': 'Survived',

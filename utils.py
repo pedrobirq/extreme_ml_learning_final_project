@@ -123,6 +123,19 @@ def titanic_fill_nulls(df: pd.DataFrame, is_train=True) -> pd.DataFrame:
     return df
 
 
+def houses_fill_nulls(df: pd.DataFrame) -> pd.DataFrame:
+    """
+     
+    """
+    cat_cols = list(config.cat_features.houses)
+    num_cols = list(config.num_features.houses)
+
+    df[cat_cols] = df[cat_cols].fillna('None')
+    df[num_cols] = df[num_cols].fillna(0)
+
+    return df
+
+
 def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
     if task == 'titanic':
         df_tr, df_val = train_test_split(
