@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns 
 import os
 
 from sklearn.model_selection import train_test_split
@@ -19,6 +21,24 @@ def check_nulls(df: pd.DataFrame) -> pd.DataFrame:
     return missing[missing > 0]
 
 
+def visualize_target_dependency(df, x, y, hue, palette='Dark2'):
+    """
+    plots a sns scatterplot to visualize the relationship between X, Y and two additional cols
+    df = pd.DataFrame
+    x = df col to be plotted on the X axis
+    y = df col to be plotted on the Y axis
+    hue = df col to be used as hue in sns.scatterplot()
+    """
+    plt.figure(figsize = (6, 4))
+    fig = sns.scatterplot(data = df, x = x, y = y, hue = hue, legend="full", palette = palette)
+    fig.spines['top'].set_visible(False)
+    fig.spines['right'].set_visible(False)
+    plt.title(f"Effect of {x} and {hue} on {y}", weight = "bold", fontsize = 12)
+    plt.ylabel(y, fontsize = 11)
+    plt.xlabel(x, fontsize = 11)
+    plt.show()
+
+    
 # Preprocessing
 
 
