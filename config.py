@@ -11,7 +11,7 @@ conf = {
         'device': 'cuda',
         'batch_size': 16,
         'epochs': 150,
-        'save_predictions': False,
+        'save_predictions': True,
     },
     'paths': {
         'titanic_train': 'objects/titanic/train.csv',
@@ -47,7 +47,7 @@ conf = {
         'houses': 'SalePrice'
     },
     'cv': {
-        'k_forlds': 5,
+        'k_folds': 5,
         'shuffle': True,
     },
     'classic_ml_models': {
@@ -109,6 +109,23 @@ conf = {
                 'random_state': '${general.random_state}'
             }
         },
+        'regression': {
+            'LinearRegression': {
+
+            },
+            'Lasso': {
+
+            },
+            'Ridge': {
+
+            },
+            'ElasticNet': {
+
+            },
+            'KNeighborsRegressor': {
+
+            },
+        }
     },
     'nn_models': {
         'classification': {
@@ -130,6 +147,13 @@ conf = {
                 'hidden_size2': 64
             },
         },
+        'regression': {
+            'SimpNN': {
+                'input': 217,
+                'output': 1,
+                'hidden_size': 128
+            }
+        }
     },
     'schedulers': {
         'step_lr': {

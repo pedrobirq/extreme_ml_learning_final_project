@@ -6,12 +6,12 @@ import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_log_error
 from scipy.stats import mode
 
 import torch
 from torch.utils.data import DataLoader
-from objects.datasets import TitanicDatasetPrepareNN, random_split
+from objects.datasets import TitanicDatasetPrepareNN, HousesDatasetPrepareNN, random_split
 from config import config
 
 
@@ -141,7 +141,7 @@ def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
         df_tr, df_val = train_test_split(
             df_train,
             test_size=0.2,
-            stratify=df_train['Survived'],
+            stratify=df_train[config.targets.titanic],
             random_state=config.general.random_state
         )
 
@@ -149,11 +149,22 @@ def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
         data_val = TitanicDatasetPrepareNN(df_val)
         data_test = TitanicDatasetPrepareNN(df_test)
 
-        train_loader = DataLoader(data_train, config.general.batch_size, shuffle=True)
-        val_loader = DataLoader(data_val, config.general.batch_size, shuffle=False)
-        test_loader = DataLoader(data_test, config.general.batch_size, shuffle=False)
+    elif task == 'houses':
+        df_tr, df_val = train_test_split(
+            df_train,
+            test_size=0.2,
+            random_state=config.general.random_state
+        )
 
-        return train_loader, val_loader, test_loader
+        data_train = HousesDatasetPrepareNN(df_tr)
+        data_val = HousesDatasetPrepareNN(df_val)
+        data_test = HousesDatasetPrepareNN(df_test)
+
+    train_loader = DataLoader(data_train, config.general.batch_size, shuffle=True)
+    val_loader = DataLoader(data_val, config.general.batch_size, shuffle=False)
+    test_loader = DataLoader(data_test, config.general.batch_size, shuffle=False)
+
+    return train_loader, val_loader, test_loader
 
 # Training
 
@@ -173,6 +184,12 @@ def save_cv_metrics(y_true, y_pred) -> dict:
 def metrics_to_string(stage, loss, accuracy, precision, recal, f1):
     return f"{stage.upper()}: loss={loss:.4f}, accuracy={accuracy:.4f}, precision={precision:.4f}, recal={recal:.4f}, f1={f1:.4f}"
 
+
+def save_cv_regression_metrics(y_true, y_pred) -> dict:
+    return {'mse': mean_squared_error(y_true, y_pred), 'mae': mean_absolute_error(y_true, y_pred), 'r2': r2_score(y_true, y_pred), \
+            'rmsle': root_mean_squared_log_error(y_true, y_pred)}
+
+     
 
 def aggregate_cv_metrics(metrics: dict):
     """
@@ -195,6 +212,20 @@ def make_classification_prediction(X_test, models):
     final_predictions = mode(y_preds, axis=1).mode
 
     return final_predictions
+
+
+def make_regression_prediction(X_test, models):
+
+    y_preds = []
+    for model in models:
+        y_pred = np.expm1(model.predict(X_test))
+        y_preds.append(y_pred)
+
+    y_preds = np.array(y_preds)
+    final_predictions = np.average(y_preds, axis=0)
+
+    return final_predictions
+     
 
 
 def save_predictions(predictions, indexes, file_name, column_names):

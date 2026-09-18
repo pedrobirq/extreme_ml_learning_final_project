@@ -94,15 +94,15 @@ class HousesDatasetPrepare:
         if self.is_train:
             self.statistics = dict()
         
-    def _prepare_cat_features(self):
+    def _prepare_cat_features(self, statistics=None):
         # Ordinal relationship
         quality_related_cols = ["ExterCond", "ExterQual", "BsmtQual", "BsmtCond", "HeatingQC", 
-                                   "KitchenQual", "FireplaceQu", "GarageQual", "GarageCond", "PoolQC"]
+                                "KitchenQual", "FireplaceQu", "GarageQual", "GarageCond", "PoolQC"]
         basement_cols = ["BsmtFinType1", "BsmtFinType2"]
 
-        quality_dict = {"Ex": 5, "Gd": 4, "TA": 3, "Fa": 2, "Po": 1, "None": 0 }
+        quality_dict = {"Ex": 5, "Gd": 4, "TA": 3, "Fa": 2, "Po": 1, "None": 0}
         basement_quality_dict = {"GLQ": 6, "ALQ": 5, "BLQ": 4, "Rec": 3, "LwQ": 2, "Unf": 1, "None": 0}
-        exposure_quality_dict = {"None": 0, "No": 1, "Mn": 2, "Av":3, "Gd": 4}
+        exposure_quality_dict = {"None": 0, "No": 1, "Mn": 2, "Av": 3, "Gd": 4}
         air_dict = {"N": 0, "Y": 1}
 
         self.df[quality_related_cols] = self.df[quality_related_cols].map(quality_dict.get)
@@ -112,14 +112,27 @@ class HousesDatasetPrepare:
 
         self.ord_columns = quality_related_cols + basement_cols + ['BsmtExposure', 'CentralAir']
 
-        # OneHot encoding
-        self.one_hot_columns = list(set(config.cat_features.houses) - set(self.ord_columns))
+        # Детерминированный порядок колонок через sorted()
+        self.one_hot_columns = sorted(list(set(config.cat_features.houses) - set(self.ord_columns)))
 
+        # OneHot encoding
         encoded_columns = []
         for col in self.one_hot_columns:
             encoded_col = utils.make_one_hot_encoding(self.df[col], drop_first=True)
             encoded_columns.append(encoded_col)
-        self.df = pd.concat([self.df, *encoded_columns], axis=1)
+        
+        ohe_df = pd.concat(encoded_columns, axis=1)
+
+        # Синхронизация OHE-колонок между train и test
+        if self.is_train:
+            # Запоминаем точный список и порядок сгенерированных OHE колонок
+            self.statistics['ohe_columns'] = list(ohe_df.columns)
+        else:
+            expected_ohe_cols = statistics['ohe_columns']
+            # reindex добавляет недостающие колонки (со значением 0) и удаляет неизвестные
+            ohe_df = ohe_df.reindex(columns=expected_ohe_cols, fill_value=0)
+
+        self.df = pd.concat([self.df, ohe_df], axis=1)
 
     def _prepare_num_features(self, statistics=None):
         need_to_scale = config.num_features.houses + self.ord_columns
@@ -135,7 +148,6 @@ class HousesDatasetPrepare:
                 encoded_col = utils.make_standard_scaling(self.df[col], mean=mean, std=std)
                 self.df[col] = encoded_col
 
-            
     def _clean_nulls(self):
         cat_cols = list(config.cat_features.houses)
         num_cols = list(config.num_features.houses)
@@ -145,16 +157,25 @@ class HousesDatasetPrepare:
 
     def prepare_dataset(self, statistics=None):
         self._clean_nulls()
-        self._prepare_cat_features()
+        self._prepare_cat_features(statistics)
         self._prepare_num_features(statistics)
         self.Id = self.df['Id']
         self.df = self.df.drop(columns=self.one_hot_columns + ['Id'])
 
+        # Гарантируем одинаковый порядок колонок признаков X
+        if self.is_train:
+            feature_cols = [c for c in self.df.columns if c != config.targets.houses]
+            self.statistics['feature_columns'] = feature_cols
+            self.df[config.targets.houses] = np.log1p(self.df[config.targets.houses])
+        else:
+            expected_features = statistics['feature_columns']
+            self.df = self.df.reindex(columns=expected_features)
+
         return self.df
 
-    def to_xy(self):
+    def to_xy(self, statistics=None):
         if 'Id' in self.df.columns:
-            self.prepare_dataset()
+            self.prepare_dataset(statistics=statistics)
         if self.is_train:
             y = self.df[config.targets.houses].to_numpy()
             X = self.df.drop(columns=[config.targets.houses]).to_numpy()
@@ -162,3 +183,23 @@ class HousesDatasetPrepare:
         else:
             X = self.df.to_numpy()
             return X
+
+
+class HousesDatasetPrepareNN(Dataset):
+    def __init__(self, df: pd.DataFrame):
+        if config.targets.houses in df.columns:
+            self.is_train = True
+            self.y = torch.tensor(df[config.targets.houses].to_numpy(), dtype=torch.float32).unsqueeze(1)
+            self.X = torch.tensor(df.drop(columns=[config.targets.houses]).to_numpy(), dtype=torch.float32)
+        else:
+            self.is_train = False
+            self.X = torch.tensor(df.to_numpy(), dtype=torch.float32)
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, index):
+        if self.is_train:
+            return self.X[index], self.y[index]
+        else:
+            return self.X[index]
