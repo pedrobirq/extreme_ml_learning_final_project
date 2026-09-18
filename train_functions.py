@@ -23,7 +23,7 @@ import utils
 
 import torch
 from torch import nn
-from torch.nn import BCEWithLogitsLoss
+from torch.nn import BCEWithLogitsLoss, L1Loss
 from torch.optim import Adam
 from torch.optim.lr_scheduler import StepLR
 from tqdm.auto import tqdm
@@ -82,18 +82,29 @@ def train_classic_ml(model_class, params, task, X_train, X_test, y_train):
 
 def train_NN(model_class, params, task, train_loader, test_loader, val_loader, optimizer_class, loss_class, epochs, verbose=False, scheduler_class=None, early_stopping=None):
     train_loss = []
-    train_f1 = []
-    train_accuracy = []
-    train_precision = []
-    train_recal = []
-
     val_loss = []
-    val_f1 = []
-    val_accuracy = []
-    val_precision = []
-    val_recal = []
-
     lr_list = []
+
+    if task == 'titanic':
+        train_f1 = []
+        train_accuracy = []
+        train_precision = []
+        train_recal = []
+
+        val_f1 = []
+        val_accuracy = []
+        val_precision = []
+        val_recal = []
+    elif task == 'houses':
+        train_mse = []
+        train_mae = []
+        train_r2 = []
+        train_rmsle = []
+
+        val_mse = []
+        val_mae = []
+        val_r2 = []
+        val_rmsle = []
 
     model = model_class(**params).to(config.general.device)
     optimizer = optimizer_class(model.parameters(), lr=config.general.learning_rate)
@@ -150,15 +161,25 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
                 pbar_train.set_postfix({"loss": f"{curr_loss.item():.4f}"})
 
         # Вычисление метрик
-        train_metrics =  utils.save_cv_metrics(train_targets, train_predictions)
+        if task == 'titanic':
+            train_metrics =  utils.save_cv_metrics(train_targets, train_predictions)
+        elif task == 'houses':
+            train_metrics = utils.save_cv_regression_metrics(train_targets, train_predictions)
 
         mean_train_loss = sum(running_train_loss) / len(running_train_loss)
-
         train_loss.append(mean_train_loss)
-        train_accuracy.append(train_metrics['accuracy'])
-        train_precision.append(train_metrics['precision'])
-        train_recal.append(train_metrics['recal'])
-        train_f1.append(train_metrics['f1'])
+
+        if task == 'titanic':
+            train_accuracy.append(train_metrics['accuracy'])
+            train_precision.append(train_metrics['precision'])
+            train_recal.append(train_metrics['recal'])
+            train_f1.append(train_metrics['f1'])
+        elif task == 'houses':
+            train_mse.append(train_metrics['mse'])
+            train_mae.append(train_metrics['mae'])
+            train_r2.append(train_metrics['r2'])
+            train_rmsle.append(train_metrics['rmsle'])
+
 
         model.eval()
         running_val_loss = []
@@ -192,15 +213,25 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
                     pbar_val.set_postfix({"loss": f"{curr_loss.item():.4f}"})
 
         # Вычисление метрик
-        val_metrics = utils.save_cv_metrics(val_targets, val_predictions)
+        
+        if task == 'titanic':
+            val_metrics =  utils.save_cv_metrics(val_targets, val_predictions)
+        elif task == 'houses':
+            val_metrics = utils.save_cv_regression_metrics(val_targets, val_predictions)
 
         mean_val_loss = sum(running_val_loss) / len(running_val_loss)
-
         val_loss.append(mean_val_loss)
-        val_f1.append(val_metrics['f1'])
-        val_accuracy.append(val_metrics['accuracy'])
-        val_precision.append(val_metrics['precision'])
-        val_recal.append(val_metrics['recal'])
+
+        if task == 'titanic':
+            val_accuracy.append(val_metrics['accuracy'])
+            val_precision.append(val_metrics['precision'])
+            val_recal.append(val_metrics['recal'])
+            val_f1.append(val_metrics['f1'])
+        elif task == 'houses':
+            val_mse.append(val_metrics['mse'])
+            val_mae.append(val_metrics['mae'])
+            val_r2.append(val_metrics['r2'])
+            val_rmsle.append(val_metrics['rmsle'])
 
         if early_stopping and early_stopping(mean_val_loss):
             pbar_train.close()
@@ -216,9 +247,22 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
     pbar_train.close()
     pbar_val.close()
 
-    log = {'train loss': train_loss, 'train accuracy': train_accuracy, 'train precision': train_precision, 'train recal': train_recal, 'train f1': train_f1,
+    if task == 'titanic':
+        log = {'train loss': train_loss, 'train accuracy': train_accuracy, 'train precision': train_precision, 'train recal': train_recal, 'train f1': train_f1,
            'val loss': val_loss, 'val accuracy': val_accuracy, 'val precision': val_precision, 'val recal': val_recal, 'val f1': val_f1, 'learning rates': lr_list}
-    return log
+    elif task == 'houses':
+        log = {'train loss': train_loss, 'train mse': train_mse, 'train mae': train_mae, 'train r2': train_r2, 'train rmsle': train_rmsle, 
+               'val loss': val_loss, 'val mse': val_mse, 'val mae': val_mae, 'val r2': val_r2, 'val rmsle': val_rmsle, 'learning rates': lr_list}
+
+    model.eval()
+    y_test_predicted = []
+    with torch.no_grad():
+        for x in test_loader:
+            x = x.to(config.general.device)
+            y_pred = torch.expm1(model(x))
+            y_test_predicted.extend(y_pred.squeeze().tolist())
+            
+    return log, y_test_predicted
 
 
 MODEL_REGISTRY = {
@@ -291,11 +335,14 @@ def run(task, train_preparer, test_preparer, save_predictions):
         for model_name, params in config.nn_models.regression.items():
             print('\n', '=' * 10, model_name, '=' * 10)
             early_stopping = utils.EarlyStopping(patience=config.early_stopping.patience, threshold=config.early_stopping.threshold)
-            log = train_NN(MODEL_REGISTRY[model_name], params, task, train_loader, test_loader, val_loader, 
-                        Adam, BCEWithLogitsLoss, config.general.epochs, verbose=True, scheduler_class=StepLR, early_stopping=early_stopping)
-            agg_metrics = utils.metrics_to_string('validation', log['val loss'][-1], log['val accuracy'][-1], log['val precision'][-1], log['val recal'][-1], log['val f1'][-1])
+            log, y_test_predicted = train_NN(MODEL_REGISTRY[model_name], params, task, train_loader, test_loader, val_loader, 
+                        Adam, L1Loss, config.general.epochs, verbose=True, scheduler_class=StepLR, early_stopping=early_stopping)
+            agg_metrics = utils.regression_metrics_to_string('validation', log['val loss'][-1], log['val mse'][-1], log['val mae'][-1], log['val r2'][-1], log['val rmsle'][-1])
 
             print('Train log\n', agg_metrics)
+            if save_predictions:
+                utils.save_predictions(y_test_predicted, test_indexes, f'objects/{task}/{model_name}', column_names=['Id', config.targets.houses])
+            
 
 if __name__ == '__main__':
     run()

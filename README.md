@@ -4,6 +4,7 @@
 ```
 conda env create -f environment.yml
 conda activate titanic-housing
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 pip install -r requirements-torch.txt   # если версии зафиксированы отдельно
+conda install -c conda-forge openmp - resolving C++ back
 ```

@@ -185,9 +185,16 @@ def metrics_to_string(stage, loss, accuracy, precision, recal, f1):
     return f"{stage.upper()}: loss={loss:.4f}, accuracy={accuracy:.4f}, precision={precision:.4f}, recal={recal:.4f}, f1={f1:.4f}"
 
 
+def regression_metrics_to_string(stage, loss, mse, mae, r2, rmsle):
+    return f"{stage.upper()}: loss={loss:.4f}, mse={mse:.4f}, mae={mae:.4f}, r2={r2:.4f}, rmsle={rmsle:.4f}"
+
+
 def save_cv_regression_metrics(y_true, y_pred) -> dict:
+    y_true_clipped = np.clip(y_true, a_min=0, a_max=None)
+    y_pred_clipped = np.clip(y_pred, a_min=0, a_max=None)
+
     return {'mse': mean_squared_error(y_true, y_pred), 'mae': mean_absolute_error(y_true, y_pred), 'r2': r2_score(y_true, y_pred), \
-            'rmsle': root_mean_squared_log_error(y_true, y_pred)}
+            'rmsle': root_mean_squared_log_error(y_true_clipped, y_pred_clipped)}
 
      
 
@@ -217,9 +224,13 @@ def make_classification_prediction(X_test, models):
 def make_regression_prediction(X_test, models):
 
     y_preds = []
-    for model in models:
-        y_pred = np.expm1(model.predict(X_test))
-        y_preds.append(y_pred)
+    if len(models) == 1:
+        y_pred = torch.expm1(models[0](X_test))
+        return y_pred
+    else:
+        for model in models:
+            y_pred = np.expm1(model.predict(X_test))
+            y_preds.append(y_pred)
 
     y_preds = np.array(y_preds)
     final_predictions = np.average(y_preds, axis=0)
