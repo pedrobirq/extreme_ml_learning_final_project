@@ -6,7 +6,7 @@ import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_log_error
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_error
 from scipy.stats import mode
 
 import torch
@@ -190,11 +190,13 @@ def regression_metrics_to_string(stage, loss, mse, mae, r2, rmsle):
 
 
 def save_cv_regression_metrics(y_true, y_pred) -> dict:
-    y_true_clipped = np.clip(y_true, a_min=0, a_max=None)
-    y_pred_clipped = np.clip(y_pred, a_min=0, a_max=None)
+    # y_true_clipped = np.clip(np.expm1(y_true), a_min=0, a_max=None)
+    # y_pred_clipped = np.clip(np.expm1(y_pred), a_min=0, a_max=None)
+    # y_true = np.expm1(y_true)
+    # y_pred = np.expm1(y_pred)
 
     return {'mse': mean_squared_error(y_true, y_pred), 'mae': mean_absolute_error(y_true, y_pred), 'r2': r2_score(y_true, y_pred), \
-            'rmsle': root_mean_squared_log_error(y_true_clipped, y_pred_clipped)}
+            'rmse': root_mean_squared_error(y_true, y_pred)}
 
      
 
