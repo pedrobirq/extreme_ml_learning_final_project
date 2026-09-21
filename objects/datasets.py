@@ -6,10 +6,11 @@ from config import config
 import utils
 
 import torch
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset
 
 
 class TitanicDatasetPrepare:
+    """ Preprocessing class for the titanic dataset """
     def __init__(self, path: str):
         self.df = pd.read_csv(path)
         self.is_train = 'train' in path
@@ -48,7 +49,6 @@ class TitanicDatasetPrepare:
         self._prepare_cat_features()
         self._prepare_num_features(statistics)
         self.df['Sex'] = self.df['Sex'].map({'male': 0, 'female': 1})
-        # print(self.df.head())
         self.PassengerId = self.df['PassengerId']
         self.df = self.df.drop(columns=['Parch', 'SibSp', 'Name', 'Ticket', 'Cabin', 'PassengerId', 'Pclass', 'Embarked', 'Initial'])
 
@@ -67,6 +67,7 @@ class TitanicDatasetPrepare:
 
 
 class TitanicDatasetPrepareNN(Dataset):
+    """ dNNs wrapper class for the titanic dataset """
     def __init__(self, df: pd.DataFrame):
         if 'Survived' in df.columns:
             self.is_train = True
@@ -88,6 +89,7 @@ class TitanicDatasetPrepareNN(Dataset):
 
 
 class HousesDatasetPrepare:
+    """ Preprocessing class for the houses dataset"""
     def __init__(self, path: str):
         self.df = pd.read_csv(path)
         self.is_train = 'train' in path
@@ -112,7 +114,6 @@ class HousesDatasetPrepare:
 
         self.ord_columns = quality_related_cols + basement_cols + ['BsmtExposure', 'CentralAir']
 
-        # Детерминированный порядок колонок через sorted()
         self.one_hot_columns = sorted(list(set(config.cat_features.houses) - set(self.ord_columns)))
 
         # OneHot encoding
@@ -123,13 +124,11 @@ class HousesDatasetPrepare:
         
         ohe_df = pd.concat(encoded_columns, axis=1)
 
-        # Синхронизация OHE-колонок между train и test
+        # Synchronization of OHE columns between train and test
         if self.is_train:
-            # Запоминаем точный список и порядок сгенерированных OHE колонок
             self.statistics['ohe_columns'] = list(ohe_df.columns)
         else:
             expected_ohe_cols = statistics['ohe_columns']
-            # reindex добавляет недостающие колонки (со значением 0) и удаляет неизвестные
             ohe_df = ohe_df.reindex(columns=expected_ohe_cols, fill_value=0)
 
         self.df = pd.concat([self.df, ohe_df], axis=1)
@@ -162,7 +161,6 @@ class HousesDatasetPrepare:
         self.Id = self.df['Id']
         self.df = self.df.drop(columns=self.one_hot_columns + ['Id'])
 
-        # Гарантируем одинаковый порядок колонок признаков X
         if self.is_train:
             feature_cols = [c for c in self.df.columns if c != config.targets.houses]
             self.statistics['feature_columns'] = feature_cols
@@ -186,6 +184,7 @@ class HousesDatasetPrepare:
 
 
 class HousesDatasetPrepareNN(Dataset):
+    """ dNNs wrapper class for the houses dataset """
     def __init__(self, df: pd.DataFrame):
         if config.targets.houses in df.columns:
             self.is_train = True

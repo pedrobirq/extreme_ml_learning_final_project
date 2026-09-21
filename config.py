@@ -1,5 +1,4 @@
 from omegaconf import OmegaConf
-import torch
 
 conf = {
     'general': {

@@ -391,7 +391,3 @@ def run(task, train_preparer, test_preparer, save_predictions):
             print('Train log\n', agg_metrics)
             if save_predictions:
                 utils.save_predictions(y_test_predicted, test_indexes, f'objects/{task}/{model_name}', column_names=['Id', config.targets.houses])
-            
-
-if __name__ == '__main__':
-    run()

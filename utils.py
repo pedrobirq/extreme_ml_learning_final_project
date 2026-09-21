@@ -11,7 +11,7 @@ from scipy.stats import mode
 
 import torch
 from torch.utils.data import DataLoader
-from objects.datasets import TitanicDatasetPrepareNN, HousesDatasetPrepareNN, random_split
+from objects.datasets import TitanicDatasetPrepareNN, HousesDatasetPrepareNN
 from config import config
 
 
@@ -47,9 +47,10 @@ def make_one_hot_encoding(series: pd.Series, drop_first=False) -> pd.DataFrame:
     Performs OneHotEncoding on a Series
     
     Input: 
-    series - a column to encode
-    drop_first=False 
-    Output: pd.DataFrame
+        series - a column to encode
+        drop_first=False 
+    Output: 
+        encoded_df - pd.DataFrame
     """
     encoded = OneHotEncoder(sparse_output=False).fit_transform(series.to_numpy().reshape((-1, 1)))
     unique_vals = [f'{series.name}_{i}' for i in sorted(series.unique())]
@@ -59,9 +60,16 @@ def make_one_hot_encoding(series: pd.Series, drop_first=False) -> pd.DataFrame:
     return encoded_df
 
 
-def make_standard_scaling(series: pd.Series, mean=None, std=None, requires_statistics=False) -> pd.DataFrame:
+def make_standard_scaling(series: pd.Series, mean=None, std=None, requires_statistics=False):
     """
     Performs StandardScaling on a numerical Series
+    Input:
+        series - a column to encode;
+        requires_statistics - False for scaling trai data, True for test data;
+        mean, std - statistics from train data
+    Output:
+        encoded_df - if test data is given
+        encoded_df, mean, std - if train data is given
     """
     if mean is None and std is None:
         encoded = StandardScaler().fit_transform(series.to_numpy().reshape(-1, 1))
@@ -105,7 +113,7 @@ def titanic_make_initials_column(name_column: pd.Series) -> pd.Series:
 
 def titanic_fill_nulls(df: pd.DataFrame, is_train=True) -> pd.DataFrame:
     """
-    Takes dataset and fills:
+    Takes titanic dataset and fills:
       - age nulls basing on mean age grouped by initials
       - fare nulls in test dataset
       - embarked nulls in train dataset
@@ -125,7 +133,9 @@ def titanic_fill_nulls(df: pd.DataFrame, is_train=True) -> pd.DataFrame:
 
 def houses_fill_nulls(df: pd.DataFrame) -> pd.DataFrame:
     """
-     
+    Takes houses dataset and fills nulls:
+        in categorical features as 'None'
+        in numerical features as 0
     """
     cat_cols = list(config.cat_features.houses)
     num_cols = list(config.num_features.houses)
@@ -137,6 +147,9 @@ def houses_fill_nulls(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
+    """
+    Prepares dataloaders for dNN models
+    """
     if task == 'titanic':
         df_tr, df_val = train_test_split(
             df_train,
@@ -170,7 +183,7 @@ def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
 
 def save_cv_metrics(y_true, y_pred) -> dict:
     """
-    Returns a dictinory like: 
+    Returns a dictinory of metrics for classification task like: 
     {
         'Accuracy': ,
         'Precision': ,
@@ -185,15 +198,20 @@ def metrics_to_string(stage, loss, accuracy, precision, recal, f1):
     return f"{stage.upper()}: loss={loss:.4f}, accuracy={accuracy:.4f}, precision={precision:.4f}, recal={recal:.4f}, f1={f1:.4f}"
 
 
-def regression_metrics_to_string(stage, loss, mse, mae, r2, rmsle):
-    return f"{stage.upper()}: loss={loss:.4f}, mse={mse:.4f}, mae={mae:.4f}, r2={r2:.4f}, rmsle={rmsle:.4f}"
+def regression_metrics_to_string(stage, loss, mse, mae, r2, rmse):
+    return f"{stage.upper()}: loss={loss:.4f}, mse={mse:.4f}, mae={mae:.4f}, r2={r2:.4f}, rmse={rmse:.4f}"
 
 
 def save_cv_regression_metrics(y_true, y_pred) -> dict:
-    # y_true_clipped = np.clip(np.expm1(y_true), a_min=0, a_max=None)
-    # y_pred_clipped = np.clip(np.expm1(y_pred), a_min=0, a_max=None)
-    # y_true = np.expm1(y_true)
-    # y_pred = np.expm1(y_pred)
+    """
+    Returns a dictionary of metrics for regression task like:
+    {
+        'mse': ,
+        'mae': ,
+        'r2': ,
+        'rmse': 
+    }
+    """
 
     return {'mse': mean_squared_error(y_true, y_pred), 'mae': mean_absolute_error(y_true, y_pred), 'r2': r2_score(y_true, y_pred), \
             'rmse': root_mean_squared_error(y_true, y_pred)}
@@ -202,7 +220,7 @@ def save_cv_regression_metrics(y_true, y_pred) -> dict:
 
 def aggregate_cv_metrics(metrics: dict):
     """
-    
+    Aggregates metrics from CV into a DataFrame for visualization
     """
     metrics_df = pd.DataFrame(metrics)
     metrics_avg = pd.DataFrame(metrics_df.to_numpy().mean(axis=0).reshape(1, -1), columns=metrics_df.columns)
@@ -211,7 +229,9 @@ def aggregate_cv_metrics(metrics: dict):
 
 
 def make_classification_prediction(X_test, models):
-
+    """
+    Predicts outputs in a classification task from CV models
+    """
     y_preds = []
     for model in models:
         y_pred = model.predict(X_test)
@@ -224,7 +244,9 @@ def make_classification_prediction(X_test, models):
 
 
 def make_regression_prediction(X_test, models):
-
+    """
+    Predicts outputs in a regression task from CV models
+    """
     y_preds = []
     if len(models) == 1:
         y_pred = torch.expm1(models[0](X_test))
@@ -240,9 +262,10 @@ def make_regression_prediction(X_test, models):
     return final_predictions
      
 
-
 def save_predictions(predictions, indexes, file_name, column_names):
-
+    """
+    Saves predictions into a csv file
+    """
     file_name += '.csv'
 
     df = pd.DataFrame({column_names[0]: indexes,
@@ -255,7 +278,7 @@ def save_predictions(predictions, indexes, file_name, column_names):
 
 
 class EarlyStopping:
-	""" Класс отслеживания значимого изменения таргетированного атрибута модели """
+	""" Class for tracking significant changes in the tracked parameter  """
 	def __init__(self, mode='min', patience=10, threshold=1e-4, threshold_mode='rel'):
 		self.mode = mode
 		self.patience = patience
