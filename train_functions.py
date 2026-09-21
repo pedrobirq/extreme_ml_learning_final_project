@@ -7,7 +7,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split, KFold
 from sklearn.linear_model import LogisticRegression, LinearRegression, Lasso, Ridge, ElasticNet
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, StackingClassifier, VotingRegressor, StackingRegressor
 from objects.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
 from catboost import CatBoostClassifier, CatBoostRegressor
@@ -259,7 +259,12 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
     with torch.no_grad():
         for x in test_loader:
             x = x.to(config.general.device)
-            y_pred = torch.expm1(model(x))
+            logits = model(x) 
+            if task == 'houses':
+                y_pred = torch.expm1(logits)
+            elif task == 'titanic':
+                y_prob = torch.sigmoid(logits)
+                y_pred = (y_prob > 0.5).int()
             y_test_predicted.extend(y_pred.squeeze().tolist())
             
     return log, y_test_predicted
@@ -270,6 +275,8 @@ MODEL_REGISTRY = {
     'KNeighborsClassifier': KNeighborsClassifier,
     'DecisionTreeClassifier': DecisionTreeClassifier,
     'RandomForestClassifier': RandomForestClassifier,
+    'VotingClassifier': VotingClassifier,
+    'StackingClassifier': StackingClassifier,
     'CatBoostClassifier': CatBoostClassifier,
     'LGBMClassifier': LGBMClassifier,
     'XGBClassifier': XGBClassifier,
@@ -283,7 +290,9 @@ MODEL_REGISTRY = {
     'KNeighborsRegressor': KNeighborsRegressor,
     'CatBoostRegressor': CatBoostRegressor,
     'LGBMRegressor': LGBMRegressor,
-    'XGBRegressor': XGBRegressor
+    'XGBRegressor': XGBRegressor,
+    'VotingRegressor': VotingRegressor,
+    'StackingRegressor': StackingRegressor
 }
 
 
@@ -301,11 +310,14 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
     data = {'X_train': X_t_train, 'X_test': X_t_test, 'y_train': y_t_train}
     train_loader, val_loader, test_loader = utils.make_dataloaders(task, df_train, df_test)
+    estimators = []
 
     if task == 'titanic':
 
         for model_name, params in config.classic_ml_models.classification.items():
             models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[model_name], params, task, **data)
+
+            estimators.extend(models)
 
             print('\n', '=' * 10, model_name, '=' * 10)
             agg_train = utils.aggregate_cv_metrics(train_metrics)
@@ -313,6 +325,22 @@ def run(task, train_preparer, test_preparer, save_predictions):
             print('Train log\n', agg_train)
             if save_predictions:
                 utils.save_predictions(y_test, test_indexes, f'objects/{task}/{model_name}', column_names=['PassengerId', config.targets.titanic])
+
+        for ensemble_name, params in config.ensembles.classification.items():
+            estimators = [(model_name, MODEL_REGISTRY[model_name](**params)) for model_name, params in config.classic_ml_models.classification.items()]
+
+            ensemble_params = dict(params.copy())
+            ensemble_params['estimators'] = estimators
+            if ensemble_name == 'StackingClassifier':
+                ensemble_params['final_estimator'] = MODEL_REGISTRY[config.ensembles.stacking_classification_final_estimator]()
+            models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[ensemble_name], ensemble_params, task, **data)
+
+            print('\n', '=' * 10, ensemble_name, '=' * 10)
+            agg_train = utils.aggregate_cv_metrics(train_metrics)
+
+            print('Train log\n', agg_train)
+            if save_predictions:
+                utils.save_predictions(y_test, test_indexes, f'objects/{task}/{ensemble_name}', column_names=['PassengerId', config.targets.titanic])
 
         for model_name, params in config.nn_models.classification.items():
             print('\n', '=' * 10, model_name, '=' * 10)
@@ -336,6 +364,22 @@ def run(task, train_preparer, test_preparer, save_predictions):
             print('Train log\n', agg_train)
             if save_predictions:
                 utils.save_predictions(y_test, test_indexes, f'objects/{task}/{model_name}', column_names=['Id', config.targets.houses])
+
+        for ensemble_name, params in config.ensembles.regression.items():
+            estimators = [(model_name, MODEL_REGISTRY[model_name](**params)) for model_name, params in config.classic_ml_models.regression.items()]
+
+            ensemble_params = dict(params.copy())
+            ensemble_params['estimators'] = estimators
+            if ensemble_name == 'StackingRegressor':
+                ensemble_params['final_estimator'] = MODEL_REGISTRY[config.ensembles.stacking_regression_final_estimator]()
+            models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[ensemble_name], ensemble_params, task, **data)
+
+            print('\n', '=' * 10, ensemble_name, '=' * 10)
+            agg_train = utils.aggregate_cv_metrics(train_metrics)
+
+            print('Train log\n', agg_train)
+            if save_predictions:
+                utils.save_predictions(y_test, test_indexes, f'objects/{task}/{ensemble_name}', column_names=['Id', config.targets.houses])
 
         for model_name, params in config.nn_models.regression.items():
             print('\n', '=' * 10, model_name, '=' * 10)

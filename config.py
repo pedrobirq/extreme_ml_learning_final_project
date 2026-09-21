@@ -107,7 +107,7 @@ conf = {
                 'reg_alpha': 0.1,
                 'reg_lambda': 1.0,
                 'random_state': '${general.random_state}'
-            }
+            },
         },
         'regression': {
             'LinearRegression': {
@@ -168,6 +168,26 @@ conf = {
                 'random_state': '${general.random_state}'
             }
         }
+    },
+    'ensembles': {
+        'classification': {
+            'VotingClassifier': {
+                'voting': 'hard'
+            },
+            'StackingClassifier': {
+                'stack_method': 'auto'
+            }
+        },
+        'regression': {
+            'VotingRegressor': {
+
+            },
+            'StackingRegressor': {
+
+            },
+        },
+        'stacking_classification_final_estimator': 'LogisticRegression',
+        'stacking_regression_final_estimator': 'LinearRegression'
     },
     'nn_models': {
         'classification': {
