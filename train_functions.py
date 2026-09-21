@@ -1,8 +1,7 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+import utils
+from config import config
 
-from sklearn.model_selection import StratifiedKFold, train_test_split, KFold
+from sklearn.model_selection import StratifiedKFold, KFold
 
 from sklearn.linear_model import LogisticRegression, LinearRegression, Lasso, Ridge, ElasticNet
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
@@ -14,15 +13,7 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 from lightgbm import LGBMClassifier, LGBMRegressor
 from xgboost import XGBClassifier, XGBRegressor
 
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
-import objects.datasets
-from config import config
-
-import utils
-
 import torch
-from torch import nn
 from torch.nn import BCEWithLogitsLoss, L1Loss
 from torch.optim import Adam
 from torch.optim.lr_scheduler import StepLR
@@ -31,19 +22,28 @@ from tqdm.auto import tqdm
 
 
 def train_classic_ml(model_class, params, task, X_train, X_test, y_train):
-    # if task == 'titanic':
-    #     preparer = objects.datasets.TitanicDatasetPrepare(config.paths.titanic_train)
-    #     X, y = preparer.to_xy()
+    """
+    Train function for classic ml models
+    Input:
+        model_class - classname of a model to train;
+        params - a dictionary of model parameters;
+        task - titanic/houses;
+        data: X_train, X_test, y_train
+    Output:
+        train_metrics - metrics depended on a given task;
+        y_test - model prediction on a test dataset.
+    """
 
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=config.general.test_size, random_state=config.general.random_state, stratify=y)
-
+    # CV initialization
     if task == 'titanic':
         kf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
     elif task == 'houses':
         kf = KFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
+
     models = []
     train_metrics = []
 
+    # Main training loop
     for train_index, val_index in kf.split(X_train, y_train):
         model = model_class(**params)
 
@@ -51,10 +51,8 @@ def train_classic_ml(model_class, params, task, X_train, X_test, y_train):
         y_tn, y_val = y_train[train_index], y_train[val_index]
 
         model.fit(X_tn, y_tn)
-        if task == 'houses':
-            y_pred = model.predict(X_val)
-        elif task == 'titanic':
-            y_pred = model.predict(X_val)
+
+        y_pred = model.predict(X_val)
 
         if task == 'titanic':
             train_metrics.append(utils.save_cv_metrics(y_val, y_pred))
@@ -62,25 +60,33 @@ def train_classic_ml(model_class, params, task, X_train, X_test, y_train):
             train_metrics.append(utils.save_cv_regression_metrics(y_val, y_pred))
         models.append(model)
 
-    # train_metrics_avg = utils.aggregate_cv_metrics(train_metrics)
-
     if task == 'titanic':
         y_test = utils.make_classification_prediction(X_test, models)
     elif task == 'houses': 
         y_test = utils.make_regression_prediction(X_test, models)
 
-    # test_metrics = []
-    # for model in models:
-    #     y_pred = model.predict(X_test)
-    #     test_metrics.append(utils.save_cv_metrics(y_test, y_pred))
-
-    # test_metrics_avg = utils.aggregate_cv_metrics(test_metrics)
-
-    return models, train_metrics, y_test
+    return train_metrics, y_test
 
 
 
 def train_NN(model_class, params, task, train_loader, test_loader, val_loader, optimizer_class, loss_class, epochs, verbose=False, scheduler_class=None, early_stopping=None):
+    """
+    Train function for dNN models.
+    Input:
+        Model_class - classname of a model to train;
+        params - model parameters;
+        task - titanik/houses;
+        dataloaders (train, test, val);
+        optimizer_class - classname of a model optimizer;
+        loss_class - classname of a loss function;
+        epochs - number of train epochs;
+        verbose - True/False;
+        scheduler_class - classname of a model scheduler;
+        early_stopping - EarlyStopping class object.
+    Output:
+        log - metrics depended on a given task;
+        y_test_predicted - model predictions on a test dataset
+    """
     train_loss = []
     val_loss = []
     lr_list = []
@@ -106,6 +112,7 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
         val_r2 = []
         val_rmse = []
 
+    # Model and its attributes preparation
     model = model_class(**params).to(config.general.device)
     optimizer = optimizer_class(model.parameters(), lr=config.general.learning_rate)
     loss = loss_class()
@@ -121,30 +128,25 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
         pbar_val.reset(total=len(val_loader))
 
         model.train()
-        # train_loop = tqdm(train_loader)
-        running_train_loss = []        # значения лоса на обучении
+        running_train_loss = []       
         train_targets = []
         train_predictions = [] 
-        # for x, targets in train_loop:
         for x, targets in train_loader:
-            # Подготовка данных
             x = x.to(config.general.device)
 
             targets = targets.to(config.general.device)
 
-            # Прямой проход и расчет лоса
+            # Forward pass
             pred = model(x)
 
             curr_loss = loss(pred, targets)
 
-            # Обратный проход
+            # Backward pass
             optimizer.zero_grad()
             curr_loss.backward()
 
-            # Шаг оптимизации
             optimizer.step()
 
-            # Сохранение значения лоса
             running_train_loss.append(curr_loss.item())
 
             if task == 'titanic':
@@ -155,12 +157,11 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
             train_targets.extend(targets.squeeze().tolist())
 
             pbar_train.update(1)
-            # Вывод средней ошибки на прогресбар tqdm
             if verbose:
                 pbar_train.set_description(f"Epoch {epoch+1}/{epochs} [Train]")
                 pbar_train.set_postfix({"loss": f"{curr_loss.item():.4f}"})
 
-        # Вычисление метрик
+        # Training metrics calculation
         if task == 'titanic':
             train_metrics =  utils.save_cv_metrics(train_targets, train_predictions)
         elif task == 'houses':
@@ -180,15 +181,12 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
             train_r2.append(train_metrics['r2'])
             train_rmse.append(train_metrics['rmse'])
 
-
+        # Validation
         model.eval()
         running_val_loss = []
         val_targets = []
         val_predictions = []
-        # Оценка тренировки модели
         with torch.no_grad():
-            # val_loop = tqdm(val_loader)
-            # for x, targets in val_loop:
             for x, targets in val_loader:
                 x = x.to(config.general.device)
 
@@ -212,7 +210,7 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
                     pbar_val.set_description(f"Epoch {epoch+1}/{epochs} [Val]")
                     pbar_val.set_postfix({"loss": f"{curr_loss.item():.4f}"})
 
-        # Вычисление метрик
+        # Validation metrics calculation
         
         if task == 'titanic':
             val_metrics =  utils.save_cv_metrics(val_targets, val_predictions)
@@ -254,6 +252,7 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
         log = {'train loss': train_loss, 'train mse': train_mse, 'train mae': train_mae, 'train r2': train_r2, 'train rmse': train_rmse, 
                'val loss': val_loss, 'val mse': val_mse, 'val mae': val_mae, 'val r2': val_r2, 'val rmse': val_rmse, 'learning rates': lr_list}
 
+    # Predictions on a test dataset 
     model.eval()
     y_test_predicted = []
     with torch.no_grad():
@@ -270,6 +269,7 @@ def train_NN(model_class, params, task, train_loader, test_loader, val_loader, o
     return log, y_test_predicted
 
 
+# Dictionary that converts model's classname to it's actual class
 MODEL_REGISTRY = {
     'LogisticRegression': LogisticRegression,
     'KNeighborsClassifier': KNeighborsClassifier,
@@ -297,6 +297,9 @@ MODEL_REGISTRY = {
 
 
 def run(task, train_preparer, test_preparer, save_predictions):
+    """
+    Main training fuction. Takes data preparer classes for train dataset and test dataset; task that is needed to perform and the argument of saving models' predictions or not.
+    """
     df_train = train_preparer.prepare_dataset()
     df_test = test_preparer.prepare_dataset(train_preparer.statistics)
 
@@ -310,14 +313,11 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
     data = {'X_train': X_t_train, 'X_test': X_t_test, 'y_train': y_t_train}
     train_loader, val_loader, test_loader = utils.make_dataloaders(task, df_train, df_test)
-    estimators = []
 
     if task == 'titanic':
 
         for model_name, params in config.classic_ml_models.classification.items():
-            models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[model_name], params, task, **data)
-
-            estimators.extend(models)
+            train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[model_name], params, task, **data)
 
             print('\n', '=' * 10, model_name, '=' * 10)
             agg_train = utils.aggregate_cv_metrics(train_metrics)
@@ -333,7 +333,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
             ensemble_params['estimators'] = estimators
             if ensemble_name == 'StackingClassifier':
                 ensemble_params['final_estimator'] = MODEL_REGISTRY[config.ensembles.stacking_classification_final_estimator]()
-            models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[ensemble_name], ensemble_params, task, **data)
+            train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[ensemble_name], ensemble_params, task, **data)
 
             print('\n', '=' * 10, ensemble_name, '=' * 10)
             agg_train = utils.aggregate_cv_metrics(train_metrics)
@@ -356,7 +356,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
     elif task == 'houses':
 
         for model_name, params in config.classic_ml_models.regression.items():
-            models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[model_name], params, task, **data)
+            train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[model_name], params, task, **data)
 
             print('\n', '=' * 10, model_name, '=' * 10)
             agg_train = utils.aggregate_cv_metrics(train_metrics)
@@ -372,7 +372,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
             ensemble_params['estimators'] = estimators
             if ensemble_name == 'StackingRegressor':
                 ensemble_params['final_estimator'] = MODEL_REGISTRY[config.ensembles.stacking_regression_final_estimator]()
-            models, train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[ensemble_name], ensemble_params, task, **data)
+            train_metrics, y_test = train_classic_ml(MODEL_REGISTRY[ensemble_name], ensemble_params, task, **data)
 
             print('\n', '=' * 10, ensemble_name, '=' * 10)
             agg_train = utils.aggregate_cv_metrics(train_metrics)

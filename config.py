@@ -11,7 +11,7 @@ conf = {
         'device': 'cuda',
         'batch_size': 16,
         'epochs': 150,
-        'save_predictions': True,
+        'save_predictions': False,
     },
     'paths': {
         'titanic_train': 'objects/titanic/train.csv',

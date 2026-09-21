@@ -18,7 +18,5 @@ def main():
     run('houses', houses_train_preparer, houses_test_preparer, config.general.save_predictions)
 
 
-
-
 if __name__ == '__main__':
     main()
