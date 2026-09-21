@@ -111,20 +111,62 @@ conf = {
         },
         'regression': {
             'LinearRegression': {
-
             },
             'Lasso': {
-
+                'alpha': 1e-3,
+                'max_iter': 15000,
+                'random_state': '${general.random_state}'
             },
             'Ridge': {
-
+                'alpha': 20.35,
+                'solver': 'svd',
+                'random_state': '${general.random_state}'
             },
             'ElasticNet': {
-
+                'alpha': 1,
+                'l1_ratio': 0.05,
+                'random_state': '${general.random_state}'
             },
             'KNeighborsRegressor': {
-
+                'algorithm': 'ball_tree',
+                'n_neighbors': 9
             },
+            'CatBoostRegressor': {
+                'iterations': 1000,
+                'depth': 3,
+                'learning_rate': '${general.learning_rate}',
+                'loss_function': 'RMSE',
+                'verbose': False,
+                'l2_leaf_reg': 5,
+                'bagging_temperature': 1.0,
+                'random_strength': 1.0,
+                'random_state': '${general.random_state}'
+            },
+            'LGBMRegressor': {
+                'metric': 'RMSE',
+                'verbose': -1,
+                'num_round': 1000,
+                'max_depth': 3,
+                'num_leaves': 15,
+                'min_child_samples': 15,
+                'subsample': 0.8,
+                'colsample_bytree': 0.8,
+                'reg_alpha': 0.1,
+                'reg_lambda': 1.0,
+                'random_state': '${general.random_state}'
+            },
+            'XGBRegressor': {
+                'n_estimators': 1000,
+                'max_depth': 3,
+                'learning_rate': '${general.learning_rate}',
+                'objective': 'reg:squarederror',
+                'min_child_weight': 3,
+                'subsample': 0.8,
+                'colsample_bytree': 0.8,
+                'reg_alpha': 0.1,
+                'reg_lambda': 1.0,
+                'random_state': '${general.random_state}'
+            }
         }
     },
     'nn_models': {
@@ -151,14 +193,26 @@ conf = {
             'SimpNN': {
                 'input': 217,
                 'output': 1,
-                'hidden_size': 128
-            }
+                'hidden_size': 64
+            },
+            'MoreLayersNN': {
+                'input': 217,
+                'output': 1,
+                'hidden_size1': 64,
+                'hidden_size2': 32
+            },
+            'ImprovedNN': {
+                'input': 217,
+                'output': 1,
+                'hidden_size1': 64,
+                'hidden_size2': 32
+            },
         }
     },
     'schedulers': {
         'step_lr': {
                     'step_size': 5,
-                    'gamma': 0.97
+                    'gamma': 0.95
                 }
     },
     'early_stopping': {

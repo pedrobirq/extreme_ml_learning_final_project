@@ -10,9 +10,9 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from objects.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
-from catboost import CatBoostClassifier
-from lightgbm import LGBMClassifier
-from xgboost import XGBClassifier
+from catboost import CatBoostClassifier, CatBoostRegressor
+from lightgbm import LGBMClassifier, LGBMRegressor
+from xgboost import XGBClassifier, XGBRegressor
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
@@ -280,7 +280,10 @@ MODEL_REGISTRY = {
     'Lasso': Lasso,
     'Ridge': Ridge,
     'ElasticNet': ElasticNet,
-    'KNeighborsRegressor': KNeighborsRegressor
+    'KNeighborsRegressor': KNeighborsRegressor,
+    'CatBoostRegressor': CatBoostRegressor,
+    'LGBMRegressor': LGBMRegressor,
+    'XGBRegressor': XGBRegressor
 }
 
 
