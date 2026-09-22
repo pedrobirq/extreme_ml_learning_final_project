@@ -7,7 +7,7 @@ conf = {
         'random_state': 52,
         'test_size': 0.2,
         'learning_rate': 0.1,
-        'device': 'cuda',
+        'device': 'cpu',
         'batch_size': 16,
         'epochs': 150,
         'save_predictions': False,
