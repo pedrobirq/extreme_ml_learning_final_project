@@ -13,10 +13,10 @@ conf = {
         'save_predictions': False,
     },
     'paths': {
-        'titanic_train': 'objects/titanic/train.csv',
-        'titanic_test': 'objects/titanic/test.csv',
-        'houses_train': 'objects/houses/train.csv',
-        'houses_test': 'objects/houses/test.csv'
+        'titanic_train': 'data/titanic/train.csv',
+        'titanic_test': 'data/titanic/test.csv',
+        'houses_train': 'data/houses/train.csv',
+        'houses_test': 'data/houses/test.csv'
     },
     'cat_features': {
         'titanic': ['Pclass', 'Embarked', 'Initial'],

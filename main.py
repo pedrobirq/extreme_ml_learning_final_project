@@ -1,7 +1,6 @@
-import utils
-from train_functions import run
-from objects.datasets import TitanicDatasetPrepare, HousesDatasetPrepare
-from config import config
+from src.train_functions import run
+from src.datasets import TitanicDatasetPrepare, HousesDatasetPrepare
+from src.config import config
 
 
 def main():

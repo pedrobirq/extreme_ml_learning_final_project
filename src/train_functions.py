@@ -1,5 +1,6 @@
-import utils
-from config import config
+from src import utils
+from src.config import config
+from src.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
 from sklearn.model_selection import StratifiedKFold, KFold
 
@@ -7,7 +8,6 @@ from sklearn.linear_model import LogisticRegression, LinearRegression, Lasso, Ri
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier, StackingClassifier, VotingRegressor, StackingRegressor
-from objects.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
 from catboost import CatBoostClassifier, CatBoostRegressor
 from lightgbm import LGBMClassifier, LGBMRegressor
@@ -324,7 +324,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
             print('Train log\n', agg_train)
             if save_predictions:
-                utils.save_predictions(y_test, test_indexes, f'objects/{task}/{model_name}', column_names=['PassengerId', config.targets.titanic])
+                utils.save_predictions(y_test, test_indexes, f'submissions/{task}/{model_name}', column_names=['PassengerId', config.targets.titanic])
 
         for ensemble_name, params in config.ensembles.classification.items():
             estimators = [(model_name, MODEL_REGISTRY[model_name](**params)) for model_name, params in config.classic_ml_models.classification.items()]
@@ -340,7 +340,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
             print('Train log\n', agg_train)
             if save_predictions:
-                utils.save_predictions(y_test, test_indexes, f'objects/{task}/{ensemble_name}', column_names=['PassengerId', config.targets.titanic])
+                utils.save_predictions(y_test, test_indexes, f'submissions/{task}/{ensemble_name}', column_names=['PassengerId', config.targets.titanic])
 
         for model_name, params in config.nn_models.classification.items():
             print('\n', '=' * 10, model_name, '=' * 10)
@@ -351,7 +351,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
             print('Train log\n', agg_metrics)
             if save_predictions:
-                utils.save_predictions(y_test_predicted, test_indexes, f'objects/{task}/{model_name}', column_names=['PassengerId', config.targets.titanic])
+                utils.save_predictions(y_test_predicted, test_indexes, f'submissions/{task}/{model_name}', column_names=['PassengerId', config.targets.titanic])
 
     elif task == 'houses':
 
@@ -363,7 +363,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
             print('Train log\n', agg_train)
             if save_predictions:
-                utils.save_predictions(y_test, test_indexes, f'objects/{task}/{model_name}', column_names=['Id', config.targets.houses])
+                utils.save_predictions(y_test, test_indexes, f'submissions/{task}/{model_name}', column_names=['Id', config.targets.houses])
 
         for ensemble_name, params in config.ensembles.regression.items():
             estimators = [(model_name, MODEL_REGISTRY[model_name](**params)) for model_name, params in config.classic_ml_models.regression.items()]
@@ -379,7 +379,7 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
             print('Train log\n', agg_train)
             if save_predictions:
-                utils.save_predictions(y_test, test_indexes, f'objects/{task}/{ensemble_name}', column_names=['Id', config.targets.houses])
+                utils.save_predictions(y_test, test_indexes, f'submissions/{task}/{ensemble_name}', column_names=['Id', config.targets.houses])
 
         for model_name, params in config.nn_models.regression.items():
             print('\n', '=' * 10, model_name, '=' * 10)
@@ -390,4 +390,4 @@ def run(task, train_preparer, test_preparer, save_predictions):
 
             print('Train log\n', agg_metrics)
             if save_predictions:
-                utils.save_predictions(y_test_predicted, test_indexes, f'objects/{task}/{model_name}', column_names=['Id', config.targets.houses])
+                utils.save_predictions(y_test_predicted, test_indexes, f'submissions/{task}/{model_name}', column_names=['Id', config.targets.houses])

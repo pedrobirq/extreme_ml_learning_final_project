@@ -11,8 +11,8 @@ from scipy.stats import mode
 
 import torch
 from torch.utils.data import DataLoader
-from objects.datasets import TitanicDatasetPrepareNN, HousesDatasetPrepareNN
-from config import config
+from src.datasets import TitanicDatasetPrepareNN, HousesDatasetPrepareNN
+from src.config import config
 
 
 # EDA

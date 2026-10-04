@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from config import config
-import utils
+from src.config import config
+from src import utils
 
 import torch
 from torch.utils.data import Dataset
