@@ -1,0 +1,43 @@
+[project]
+name = "extreme-ml-learning-final-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Vladimir", email = "pedrobir@yandex.ru" }
+]
+requires-python = ">=3.11, <3.12"
+dependencies = [
+    "catboost>=1.2.10",
+    "ipykernel>=7.4.0",
+    "jupyterlab>=4.6.4",
+    "lightgbm>=4.7.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.4.6",
+    "omegaconf>=2.3.1",
+    "optuna>=5.0.0",
+    "pandas>=3.0.6",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.17.1",
+    "seaborn>=0.13.2",
+    "torch",
+    "torchvision",
+    "tqdm>=4.70.1",
+    "xgboost>=3.2.0",
+]
+
+[project.scripts]
+extreme-ml-learning-final-project = "extreme_ml_learning_final_project:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }

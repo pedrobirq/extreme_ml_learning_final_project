@@ -2,10 +2,8 @@
 ## Getting started 
 *How to create environment and start the main pipeline:*
 ```
-conda env create -f environment.yml
-conda activate titanic-housing
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-python main.py
+uv sync
+uv run main.py
 ```
 
 Basically, the environment contains a GPU-version of PyTorch, but device may be selected in `config.py`
