@@ -223,6 +223,7 @@ catboost_info/
 
 #drafts
 draft.ipynb
+test.py
 
 # submissions
 submissions/
