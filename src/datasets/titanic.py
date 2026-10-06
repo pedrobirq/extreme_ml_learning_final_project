@@ -75,11 +75,7 @@ class TitanicDatasetPrepare:
 
         return df_no_nulls
 
-
-
-        initial = utils.titanic_make_initials_column(self.df['Name'])
-        self.df['Initial'] = initial
-        self.df = utils.titanic_fill_nulls(self.df, self.is_train)
+    
 
     # def prepare_dataset(self, statistics=None):
     #     self._clean_nulls()
@@ -92,17 +88,31 @@ class TitanicDatasetPrepare:
 
     #     return self.df
 
-    def prepare_dataset(self, statistics=None, drop_duplicates=True, columns_to_drop=None, fill_nulls=True):
+    def prepare_dataset(self, 
+                        statistics=None, 
+                        drop_duplicates=True, 
+                        columns_to_drop=None, 
+                        fill_nulls=True,
+                        make_family_size_column=True,
+                        OHE_cat_features=None,
+                        ORD_cat_features=None,
+                        num_features=None):
         prep_df = self.df.copy()
+
+        prep_df['Sex'] = prep_df['Sex'].map({'male': 0, 'female': 1})
+        self.PassengerId = prep_df['PassengerId']
 
         if drop_duplicates:
             prep_df = prep_df.drop_duplicates()
 
-        if columns_to_drop is not None:
-            prep_df = prep_df.drop(column=columns_to_drop)
-
         if fill_nulls:
             prep_df = self._fill_nulls(prep_df)
+
+        if make_family_size_column:
+            prep_df['Family_size'] = prep_df['Parch'] + prep_df['SibSp']
+
+        if columns_to_drop is not None:
+            prep_df = prep_df.drop(columns=columns_to_drop)
 
         return prep_df
 

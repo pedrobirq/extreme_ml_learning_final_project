@@ -5,8 +5,8 @@ from configs.config_titanic import config
 def main():
     # Data preprocessing
     dataset_preparer = TitanicDatasetPrepare(config.paths.train)
-    df = dataset_preparer.prepare_dataset()
-    print(df.isna().sum())
+    df = dataset_preparer.prepare_dataset(columns_to_drop=config.drop_features)
+    print(df.head())
 
 
 
