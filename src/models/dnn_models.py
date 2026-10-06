@@ -3,7 +3,7 @@ from torch import nn
 import numpy as np
 import pandas as pd
 
-from src.config import config
+from configs.config import config
 
 
 class SimpNN(nn.Module):

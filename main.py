@@ -1,6 +1,6 @@
 from src.train_functions import run
-from src.datasets import TitanicDatasetPrepare, HousesDatasetPrepare
-from src.config import config
+from datasets.datasets import TitanicDatasetPrepare, HousesDatasetPrepare
+from configs.config import config
 
 
 def main():

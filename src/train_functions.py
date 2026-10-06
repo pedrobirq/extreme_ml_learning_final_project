@@ -1,6 +1,6 @@
 from src import utils
-from src.config import config
-from src.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
+from configs.config import config
+from models.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
 from sklearn.model_selection import StratifiedKFold, KFold
 
