@@ -9,8 +9,15 @@ def main():
                                           OHE_cat_features=config.cat_features, 
                                           num_features=config.num_features,
                                           )
-    X, y= dataset_preparer.to_xy(df)
-    print(X.shape, y.shape)
+    X, y = dataset_preparer.to_xy(df)
+
+    test_dataset_preparer = TitanicDatasetPrepare(config.paths.test, is_train=False, statistics=dataset_preparer.statistics)
+    test_df = test_dataset_preparer.prepare_dataset(columns_to_drop=config.drop_features,
+                                                    OHE_cat_features=config.cat_features, 
+                                                    num_features=config.num_features,
+                                                    )
+    X_test = test_dataset_preparer.to_xy(test_df)
+    print(X_test.shape, X.shape)
 
 
 

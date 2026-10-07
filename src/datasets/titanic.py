@@ -12,14 +12,20 @@ from torch.utils.data import Dataset
 
 class TitanicDatasetPrepare:
     """ Preprocessing class for the titanic dataset """
-    
-    def __init__(self, path: str, is_train=True):
+
+    def __init__(self, path: str, is_train=True, statistics=None):
         self.df = pd.read_csv(path)
         self.is_train = is_train
         if self.is_train:
             self.statistics = dict()
+        else:
+            if statistics is not None:
+                self.statistics = statistics
+            else:
+                print('Provide train statistics first')
 
-    def _prepare_num_features(self, columns_to_prepare: list, df: pd.DataFrame, statistics=None, scaler='minmax'):
+
+    def _prepare_num_features(self, columns_to_prepare: list, df: pd.DataFrame, scaler='minmax'):
 
         prep_df = df.copy()
         for col in columns_to_prepare:
@@ -31,8 +37,8 @@ class TitanicDatasetPrepare:
                     self.statistics[f"{col}_mean"] = mean
                     self.statistics[f"{col}_std"] = std
                 else:
-                    mean = statistics[f"{col}_mean"]
-                    std = statistics[f"{col}_std"]
+                    mean = self.statistics[f"{col}_mean"]
+                    std = self.statistics[f"{col}_std"]
                     encoded_col = make_standard_scaling(prep_df[col], mean=mean, std=std)
 
             prep_df[col] = encoded_col
@@ -98,8 +104,7 @@ class TitanicDatasetPrepare:
         return prep_df.drop(columns=columns_to_encode)
 
 
-    def prepare_dataset(self, 
-                        statistics=None, 
+    def prepare_dataset(self,
                         drop_duplicates=True, 
                         columns_to_drop=None, 
                         fill_nulls=True,
@@ -125,10 +130,7 @@ class TitanicDatasetPrepare:
             prep_df = self._make_OHE(OHE_cat_features, prep_df)
 
         if num_features is not None:
-            if not self.is_train and statistics is not None:
-                prep_df = self._prepare_num_features(num_features, prep_df, scaler=scaler, statistics=statistics)
-            else:
-                prep_df = self._prepare_num_features(num_features, prep_df, scaler=scaler)
+            prep_df = self._prepare_num_features(num_features, prep_df, scaler=scaler)
 
         if columns_to_drop is not None:
             prep_df = prep_df.drop(columns=columns_to_drop)
