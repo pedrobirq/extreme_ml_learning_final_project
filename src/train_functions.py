@@ -7,7 +7,7 @@ from src.models.registry import CLASSIC_ML_MODEL_REGISTRY
 from src import utils
 
 from sklearn.model_selection import StratifiedKFold, KFold
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, auc, roc_auc_score
 
 # from sklearn.linear_model import LogisticRegression, LinearRegression, Lasso, Ridge, ElasticNet
 # from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
@@ -81,7 +81,7 @@ def train_classification(model_class: str,
     raw_df = pd.read_csv(config.paths.train)
 
     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
-    cv_statistics = {'f1_score': []}
+    cv_metrics = {'f1_score': [], 'roc_auc_score': []}
 
     model = CLASSIC_ML_MODEL_REGISTRY[model_class](**model_params)
     models = []
@@ -108,13 +108,16 @@ def train_classification(model_class: str,
 
         # model validating
         y_pred = model.predict(X_val)
-        f1_metric = f1_score(y_val, y_pred)
-        cv_statistics['f1_score'].append(f1_metric)
+        y_proba = model.predict_proba(X_val)
+        
+        cv_metrics['f1_score'].append(f1_score(y_val, y_pred))
+        cv_metrics['roc_auc_score'].append(roc_auc_score(y_val, y_proba[:, 1]))
+        
 
         # model saving
         models.append(model)
 
-    return cv_statistics, models
+    return cv_metrics, models
 
 
         

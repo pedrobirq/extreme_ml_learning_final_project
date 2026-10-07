@@ -151,52 +151,61 @@ def make_standard_scaling(series: pd.Series, mean=None, std=None, requires_stati
 #     return df
 
 
-# # def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
-# #     """
-# #     Prepares dataloaders for dNN models
-# #     """
-# #     if task == 'titanic':
-# #         df_tr, df_val = train_test_split(
-# #             df_train,
-# #             test_size=0.2,
-# #             stratify=df_train[config.targets.titanic],
-# #             random_state=config.general.random_state
-# #         )
+# def make_dataloaders(task, df_train: pd.DataFrame, df_test: pd.DataFrame):
+#     """
+#     Prepares dataloaders for dNN models
+#     """
+#     if task == 'titanic':
+#         df_tr, df_val = train_test_split(
+#             df_train,
+#             test_size=0.2,
+#             stratify=df_train[config.targets.titanic],
+#             random_state=config.general.random_state
+#         )
 
-# #         data_train = TitanicDatasetPrepareNN(df_tr)
-# #         data_val = TitanicDatasetPrepareNN(df_val)
-# #         data_test = TitanicDatasetPrepareNN(df_test)
+#         data_train = TitanicDatasetPrepareNN(df_tr)
+#         data_val = TitanicDatasetPrepareNN(df_val)
+#         data_test = TitanicDatasetPrepareNN(df_test)
 
-# #     elif task == 'houses':
-# #         df_tr, df_val = train_test_split(
-# #             df_train,
-# #             test_size=0.2,
-# #             random_state=config.general.random_state
-# #         )
+#     elif task == 'houses':
+#         df_tr, df_val = train_test_split(
+#             df_train,
+#             test_size=0.2,
+#             random_state=config.general.random_state
+#         )
 
-# #         data_train = HousesDatasetPrepareNN(df_tr)
-# #         data_val = HousesDatasetPrepareNN(df_val)
-# #         data_test = HousesDatasetPrepareNN(df_test)
+#         data_train = HousesDatasetPrepareNN(df_tr)
+#         data_val = HousesDatasetPrepareNN(df_val)
+#         data_test = HousesDatasetPrepareNN(df_test)
 
-# #     train_loader = DataLoader(data_train, config.general.batch_size, shuffle=True)
-# #     val_loader = DataLoader(data_val, config.general.batch_size, shuffle=False)
-# #     test_loader = DataLoader(data_test, config.general.batch_size, shuffle=False)
+#     train_loader = DataLoader(data_train, config.general.batch_size, shuffle=True)
+#     val_loader = DataLoader(data_val, config.general.batch_size, shuffle=False)
+#     test_loader = DataLoader(data_test, config.general.batch_size, shuffle=False)
 
-# #     return train_loader, val_loader, test_loader
+#     return train_loader, val_loader, test_loader
 
-# # Training
+# Training
 
-def save_cv_metrics(y_true, y_pred) -> dict:
-    """
-    Returns a dictinory of metrics for classification task like: 
-    {
-        'Accuracy': ,
-        'Precision': ,
-        'Recall': ,
-        'F1': 
-    }
-    """
-    return {'accuracy': accuracy_score(y_true, y_pred), 'precision': precision_score(y_true, y_pred), 'recal': recall_score(y_true, y_pred), 'f1': f1_score(y_true, y_pred)}
+# def save_cv_metrics(y_true, y_pred) -> dict:
+#     """
+#     Returns a dictinory of metrics for classification task like: 
+#     {
+#         'Accuracy': ,
+#         'Precision': ,
+#         'Recall': ,
+#         'F1': 
+#     }
+#     """
+#     return {'accuracy': accuracy_score(y_true, y_pred), 'precision': precision_score(y_true, y_pred), 'recal': recall_score(y_true, y_pred), 'f1': f1_score(y_true, y_pred)}
+
+
+def calc_cv_statistics(cv_metrics: dict):
+    df = pd.DataFrame(cv_metrics)
+    cv_statistics = df.agg(['mean', 'std']).T
+    return cv_statistics
+    
+    
+        
 
 
 # def metrics_to_string(stage, loss, accuracy, precision, recal, f1):
