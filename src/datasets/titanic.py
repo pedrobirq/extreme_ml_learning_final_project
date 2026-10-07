@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+from typing import Union
+# import matplotlib.pyplot as plt
 
 from configs.config_titanic import config
 from src.utils import make_one_hot_encoding, make_min_max_scaling, make_standard_scaling
@@ -13,8 +14,11 @@ from torch.utils.data import Dataset
 class TitanicDatasetPrepare:
     """ Preprocessing class for the titanic dataset """
 
-    def __init__(self, path: str, is_train=True, statistics=None):
-        self.df = pd.read_csv(path)
+    def __init__(self, data: Union[str, pd.DataFrame], is_train=True, statistics=None):
+        if isinstance(data, str):
+            self.df = pd.read_csv(data)
+        else:
+            self.df = data.copy()
         self.is_train = is_train
         if self.is_train:
             self.statistics = dict()
@@ -29,19 +33,32 @@ class TitanicDatasetPrepare:
 
         prep_df = df.copy()
         for col in columns_to_prepare:
+
             if scaler == 'minmax': 
-                encoded_col = make_min_max_scaling(prep_df[col])
+                if self.is_train:
+                    col_min = prep_df[col].min()
+                    col_max = prep_df[col].max()
+                    self.statistics[f"{col}_min"] = col_min
+                    self.statistics[f"{col}_max"] = col_max
+                else:
+                    col_min = self.statistics[f"{col}_min"]
+                    col_max = self.statistics[f"{col}_max"]
+
+                # encoded_col = make_min_max_scaling(prep_df[col])
+                # Защита от деления на 0 при константном признаке
+                denom = (col_max - col_min) if (col_max - col_min) != 0 else 1.0
+                prep_df[col] = (prep_df[col] - col_min) / denom
+
             elif scaler == 'standard':
                 if self.is_train:
-                    encoded_col, mean, std = make_standard_scaling(prep_df[col], requires_statistics=True)
+                    prep_df[col], mean, std = make_standard_scaling(prep_df[col], requires_statistics=True)
                     self.statistics[f"{col}_mean"] = mean
                     self.statistics[f"{col}_std"] = std
                 else:
                     mean = self.statistics[f"{col}_mean"]
                     std = self.statistics[f"{col}_std"]
-                    encoded_col = make_standard_scaling(prep_df[col], mean=mean, std=std)
+                    prep_df[col] = make_standard_scaling(prep_df[col], mean=mean, std=std)
 
-            prep_df[col] = encoded_col
 
         return prep_df
     
@@ -53,55 +70,64 @@ class TitanicDatasetPrepare:
         df_no_nulls = df.copy()
         initials = df_no_nulls['Name'].str.extract('([A-Za-z]+)\.').squeeze()
 
-        unique_initials = initials.unique().tolist()
-        initials_to_replace = []
-        for unique_initial in unique_initials:
-            if unique_initial in ['Mlle', 'Mme', 'Ms', 'Dr', 'Major', 'Lady', 'Capt', 'Sir', 'Don', 'Dona']:
-                if unique_initial in ['Mlle', 'Mme', 'Ms']:
-                    initials_to_replace.append('Miss')
-                elif unique_initial in ['Dr', 'Major', 'Capt', 'Sir', 'Don']:   
-                    initials_to_replace.append('Mr')
-                else:
-                    initials_to_replace.append('Mrs')
-            elif unique_initial in ['Mr', 'Mrs', 'Miss', 'Master']:
-                initials_to_replace.append(unique_initial)
-            else:
-                initials_to_replace.append('Other')
-
-        processed_initials = initials.replace(unique_initials, initials_to_replace)
-        df_no_nulls['Initial'] = processed_initials
-
-        mean_age_by_initial = df_no_nulls.groupby('Initial')['Age'].mean()
-
-        for initial in mean_age_by_initial.keys():
-            df_no_nulls.loc[(df_no_nulls['Age'].isnull()) & (df_no_nulls['Initial'] == initial), 'Age'] = mean_age_by_initial[initial]
+        title_mapping = {
+            'Mlle': 'Miss', 'Mme': 'Miss', 'Ms': 'Miss',
+            'Dr': 'Mr', 'Major': 'Mr', 'Capt': 'Mr', 'Sir': 'Mr', 'Don': 'Mr',
+            'Lady': 'Mrs', 'Dona': 'Mrs',
+            'Mr': 'Mr', 'Mrs': 'Mrs', 'Miss': 'Miss', 'Master': 'Master'
+        }
+        df_no_nulls['Initial'] = initials.map(lambda x: title_mapping.get(x, 'Other'))
 
         if self.is_train:
-            df_no_nulls['Embarked'] = df_no_nulls['Embarked'].fillna('S')
-        else:
-            df_no_nulls.loc[(df_no_nulls['Fare'].isnull()), 'Fare'] = df_no_nulls.groupby('Pclass')['Fare'].mean()[3]
+            # Статистики возраста
+            self.statistics['mean_age_by_initial'] = df_no_nulls.groupby('Initial')['Age'].mean().to_dict()
+            self.statistics['global_mean_age'] = df_no_nulls['Age'].mean()
+            
+            # Мода Embarked
+            embarked_mode = df_no_nulls['Embarked'].mode()
+            self.statistics['embarked_mode'] = embarked_mode.iloc[0] if not embarked_mode.empty else 'S'
+            
+            # Средняя стоимость билета по Pclass
+            self.statistics['mean_fare_by_pclass'] = df_no_nulls.groupby('Pclass')['Fare'].mean().to_dict()
+            self.statistics['global_mean_fare'] = df_no_nulls['Fare'].mean()
+
+        # Применение статистик к текущему фолду
+        # 1. Возраст
+        mean_ages = self.statistics['mean_age_by_initial']
+        global_age = self.statistics.get('global_mean_age', 28.0)
+        for init, avg_age in mean_ages.items():
+            mask = (df_no_nulls['Age'].isnull()) & (df_no_nulls['Initial'] == init)
+            df_no_nulls.loc[mask, 'Age'] = avg_age
+        df_no_nulls['Age'] = df_no_nulls['Age'].fillna(global_age)
+
+        # 2. Embarked
+        df_no_nulls['Embarked'] = df_no_nulls['Embarked'].fillna(self.statistics['embarked_mode'])
+
+        # 3. Fare
+        mean_fares = self.statistics['mean_fare_by_pclass']
+        global_fare = self.statistics.get('global_mean_fare', 32.0)
+        for pclass, avg_fare in mean_fares.items():
+            mask = (df_no_nulls['Fare'].isnull()) & (df_no_nulls['Pclass'] == pclass)
+            df_no_nulls.loc[mask, 'Fare'] = avg_fare
+        df_no_nulls['Fare'] = df_no_nulls['Fare'].fillna(global_fare)
 
         return df_no_nulls
 
     def _make_OHE(self, columns_to_encode: list, df: pd.DataFrame, drop_first=True):
-
         prep_df = df.copy()
-        encoded_columns = []
-        for column in columns_to_encode:
-            encoded_columns.append(make_one_hot_encoding(prep_df[column], drop_first=drop_first))
 
-        ohe_df = pd.concat(encoded_columns, axis=1)
+        ohe_df = pd.get_dummies(prep_df[columns_to_encode], drop_first=drop_first, dtype=float)
 
-        # train/test sync
+        # train/val sync
         if self.is_train:
             self.statistics['ohe_columns'] = list(ohe_df.columns)
         else:
             expected_ohe_cols = self.statistics['ohe_columns']
             ohe_df = ohe_df.reindex(columns=expected_ohe_cols, fill_value=0)
 
-        prep_df = pd.concat([prep_df, ohe_df], axis=1)
+        prep_df = pd.concat([prep_df.drop(columns=columns_to_encode), ohe_df], axis=1)
 
-        return prep_df.drop(columns=columns_to_encode)
+        return prep_df
 
 
     def prepare_dataset(self,
@@ -133,13 +159,14 @@ class TitanicDatasetPrepare:
             prep_df = self._prepare_num_features(num_features, prep_df, scaler=scaler)
 
         if columns_to_drop is not None:
-            prep_df = prep_df.drop(columns=columns_to_drop)
+            cols_to_remove = [c for c in columns_to_drop if c in prep_df.columns]
+            prep_df = prep_df.drop(columns=cols_to_remove)
 
         return prep_df
 
 
     def to_xy(self, prep_df):
-        if self.is_train:
+        if config.general.target in prep_df.columns:
             y = prep_df[config.general.target].to_numpy()
             X = prep_df.drop(columns=[config.general.target]).to_numpy()
             return X, y

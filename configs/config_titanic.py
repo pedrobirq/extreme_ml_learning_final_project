@@ -19,9 +19,13 @@ conf = {
     },
     'cat_features': ['Pclass', 'Embarked', 'Initial'],
     'num_features': ['Age', 'Fare', 'Family_size'],
-    'drop_features': ['Name', 'PassengerId', 'Parch', 'SibSp', 'Ticket', 'Cabin'],
+    'preprocessing_params': {
+        'columns_to_drop': ['Name', 'PassengerId', 'Parch', 'SibSp', 'Ticket', 'Cabin'],
+        'OHE_cat_features': ['Pclass', 'Embarked', 'Initial'], 
+        'num_features': ['Age', 'Fare', 'Family_size'],
+    },
     'cv': {
-        'k_folds': 5,
+        'k_folds': 10,
         'shuffle': True,
     },
     'classic_ml_models': {
