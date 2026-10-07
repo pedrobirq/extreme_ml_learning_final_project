@@ -9,7 +9,8 @@ def main():
                                           OHE_cat_features=config.cat_features, 
                                           num_features=config.num_features,
                                           )
-    print(df.head())
+    X, y= dataset_preparer.to_xy(df)
+    print(X.shape, y.shape)
 
 
 

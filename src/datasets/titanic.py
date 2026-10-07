@@ -12,6 +12,7 @@ from torch.utils.data import Dataset
 
 class TitanicDatasetPrepare:
     """ Preprocessing class for the titanic dataset """
+    
     def __init__(self, path: str, is_train=True):
         self.df = pd.read_csv(path)
         self.is_train = is_train
@@ -37,6 +38,7 @@ class TitanicDatasetPrepare:
             prep_df[col] = encoded_col
 
         return prep_df
+    
 
     def _fill_nulls(self, df: pd.DataFrame):
         """
@@ -96,19 +98,6 @@ class TitanicDatasetPrepare:
         return prep_df.drop(columns=columns_to_encode)
 
 
-        
-
-    # def prepare_dataset(self, statistics=None):
-    #     self._clean_nulls()
-    #     self.df['Family_size'] = self.df['Parch'] + self.df['SibSp']
-    #     self._prepare_cat_features()
-    #     self._prepare_num_features(statistics)
-    #     self.df['Sex'] = self.df['Sex'].map({'male': 0, 'female': 1})
-    #     self.PassengerId = self.df['PassengerId']
-    #     self.df = self.df.drop(columns=['Parch', 'SibSp', 'Name', 'Ticket', 'Cabin', 'PassengerId', 'Pclass', 'Embarked', 'Initial'])
-
-    #     return self.df
-
     def prepare_dataset(self, 
                         statistics=None, 
                         drop_duplicates=True, 
@@ -147,35 +136,33 @@ class TitanicDatasetPrepare:
         return prep_df
 
 
-    # def to_xy(self):
-    #     if 'Name' in self.df.columns:
-    #         self.prepare_dataset()
-    #     if self.is_train:
-    #         y = self.df['Survived'].to_numpy()
-    #         X = self.df.drop(columns=['Survived']).to_numpy()
-    #         return X, y
-    #     else:
-    #         X = self.df.to_numpy()
-    #         return X
-
-
-class TitanicDatasetPrepareNN(Dataset):
-    """ dNNs wrapper class for the titanic dataset """
-    def __init__(self, df: pd.DataFrame):
-        if 'Survived' in df.columns:
-            self.is_train = True
-            self.y = torch.tensor(df['Survived'].to_numpy(), dtype=torch.float32).unsqueeze(1)
-            self.X = torch.tensor(df.drop(columns=['Survived']).to_numpy(), dtype=torch.float32)
-        else:
-            self.is_train = False
-            self.X = torch.tensor(df.to_numpy(), dtype=torch.float32)
-
-
-    def __len__(self):
-        return self.X.shape[0]
-
-    def __getitem__(self, index):
+    def to_xy(self, prep_df):
         if self.is_train:
-            return self.X[index], self.y[index]
+            y = prep_df[config.general.target].to_numpy()
+            X = prep_df.drop(columns=[config.general.target]).to_numpy()
+            return X, y
         else:
-            return self.X[index]
+            X = prep_df.to_numpy()
+            return X
+
+
+# class TitanicDatasetPrepareNN(Dataset):
+#     """ dNNs wrapper class for the titanic dataset """
+#     def __init__(self, df: pd.DataFrame):
+#         if 'Survived' in df.columns:
+#             self.is_train = True
+#             self.y = torch.tensor(df['Survived'].to_numpy(), dtype=torch.float32).unsqueeze(1)
+#             self.X = torch.tensor(df.drop(columns=['Survived']).to_numpy(), dtype=torch.float32)
+#         else:
+#             self.is_train = False
+#             self.X = torch.tensor(df.to_numpy(), dtype=torch.float32)
+
+
+#     def __len__(self):
+#         return self.X.shape[0]
+
+#     def __getitem__(self, index):
+#         if self.is_train:
+#             return self.X[index], self.y[index]
+#         else:
+#             return self.X[index]
