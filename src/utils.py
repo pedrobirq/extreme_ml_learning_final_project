@@ -5,7 +5,7 @@ import pandas as pd
 # import os
 
 # from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 # from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_error
 # from scipy.stats import mode
 
@@ -60,29 +60,34 @@ def make_one_hot_encoding(series: pd.Series, drop_first=False) -> pd.DataFrame:
     return encoded_df
 
 
-# def make_standard_scaling(series: pd.Series, mean=None, std=None, requires_statistics=False):
-#     """
-#     Performs StandardScaling on a numerical Series
-#     Input:
-#         series - a column to encode;
-#         requires_statistics - False for scaling trai data, True for test data;
-#         mean, std - statistics from train data
-#     Output:
-#         encoded_df - if test data is given
-#         encoded_df, mean, std - if train data is given
-#     """
-#     if mean is None and std is None:
-#         encoded = StandardScaler().fit_transform(series.to_numpy().reshape(-1, 1))
-#     else:
-#         X = series.to_numpy()
-#         encoded = (X - mean) / std
-    
-#     encoded_df = pd.DataFrame(encoded, columns=[series.name])
+def make_min_max_scaling(series: pd.Series):
+    encoded = MinMaxScaler().fit_transform(series.to_numpy().reshape(-1, 1))
 
-#     if requires_statistics:
-#         return encoded_df, series.mean(), series.std()
-#     else:
-#         return encoded_df
+    return pd.DataFrame(encoded, columns=[series.name])
+
+def make_standard_scaling(series: pd.Series, mean=None, std=None, requires_statistics=False):
+    """
+    Performs StandardScaling on a numerical Series
+    Input:
+        series - a column to encode;
+        requires_statistics - False for scaling trai data, True for test data;
+        mean, std - statistics from train data
+    Output:
+        encoded_df - if test data is given
+        encoded_df, mean, std - if train data is given
+    """
+    if mean is None and std is None:
+        encoded = StandardScaler().fit_transform(series.to_numpy().reshape(-1, 1))
+    else:
+        X = series.to_numpy()
+        encoded = (X - mean) / std
+    
+    encoded_df = pd.DataFrame(encoded, columns=[series.name])
+
+    if requires_statistics:
+        return encoded_df, series.mean(), series.std()
+    else:
+        return encoded_df
 
 
 # def titanic_make_initials_column(name_column: pd.Series) -> pd.Series:

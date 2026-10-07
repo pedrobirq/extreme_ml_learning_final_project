@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from configs.config_titanic import config
-from src.utils import make_one_hot_encoding
+from src.utils import make_one_hot_encoding, make_min_max_scaling, make_standard_scaling
 
 import torch
 from torch.utils.data import Dataset
@@ -17,28 +17,27 @@ class TitanicDatasetPrepare:
         self.is_train = is_train
         if self.is_train:
             self.statistics = dict()
-        
-    # def _prepare_cat_features(self):
-    #     encoded_columns = []
-    #     for col in config.cat_features.titanic:
-    #         encoded_col = utils.make_one_hot_encoding(self.df[col], drop_first=True)
-    #         encoded_columns.append(encoded_col)
-    #     self.df = pd.concat([self.df, *encoded_columns], axis=1)
 
-    # def _prepare_num_features(self, statistics=None):
-    #     for col in config.num_features.titanic:
-    #         if self.is_train:
-    #             encoded_col, mean, std = utils.make_standard_scaling(self.df[col], requires_statistics=True)
-    #             self.df[col] = encoded_col
-    #             self.statistics[f"{col}_mean"] = mean
-    #             self.statistics[f"{col}_std"] = std
-    #         else:
-    #             mean = statistics[f"{col}_mean"]
-    #             std = statistics[f"{col}_std"]
-    #             encoded_col = utils.make_standard_scaling(self.df[col], mean=mean, std=std)
-    #             self.df[col] = encoded_col
+    def _prepare_num_features(self, columns_to_prepare: list, df: pd.DataFrame, statistics=None, scaler='minmax'):
 
-            
+        prep_df = df.copy()
+        for col in columns_to_prepare:
+            if scaler == 'minmax': 
+                encoded_col = make_min_max_scaling(prep_df[col])
+            elif scaler == 'standard':
+                if self.is_train:
+                    encoded_col, mean, std = make_standard_scaling(prep_df[col], requires_statistics=True)
+                    self.statistics[f"{col}_mean"] = mean
+                    self.statistics[f"{col}_std"] = std
+                else:
+                    mean = statistics[f"{col}_mean"]
+                    std = statistics[f"{col}_std"]
+                    encoded_col = make_standard_scaling(prep_df[col], mean=mean, std=std)
+
+            prep_df[col] = encoded_col
+
+        return prep_df
+
     def _fill_nulls(self, df: pd.DataFrame):
         """
         Initials parsing from 'Name' column
@@ -85,6 +84,7 @@ class TitanicDatasetPrepare:
 
         ohe_df = pd.concat(encoded_columns, axis=1)
 
+        # train/test sync
         if self.is_train:
             self.statistics['ohe_columns'] = list(ohe_df.columns)
         else:
@@ -116,8 +116,8 @@ class TitanicDatasetPrepare:
                         fill_nulls=True,
                         make_family_size_column=True,
                         OHE_cat_features=None,
-                        ORD_cat_features=None,
-                        num_features=None):
+                        num_features=None,
+                        scaler='minmax'):
         prep_df = self.df.copy()
 
         prep_df['Sex'] = prep_df['Sex'].map({'male': 0, 'female': 1})
@@ -134,6 +134,12 @@ class TitanicDatasetPrepare:
 
         if OHE_cat_features is not None:
             prep_df = self._make_OHE(OHE_cat_features, prep_df)
+
+        if num_features is not None:
+            if not self.is_train and statistics is not None:
+                prep_df = self._prepare_num_features(num_features, prep_df, scaler=scaler, statistics=statistics)
+            else:
+                prep_df = self._prepare_num_features(num_features, prep_df, scaler=scaler)
 
         if columns_to_drop is not None:
             prep_df = prep_df.drop(columns=columns_to_drop)
