@@ -3,8 +3,11 @@
 import pandas as pd
 
 from src.datasets.titanic import TitanicDatasetPrepare 
+from src.models.registry import CLASSIC_ML_MODEL_REGISTRY
+from src import utils
 
 from sklearn.model_selection import StratifiedKFold, KFold
+from sklearn.metrics import f1_score
 
 # from sklearn.linear_model import LogisticRegression, LinearRegression, Lasso, Ridge, ElasticNet
 # from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
@@ -78,7 +81,10 @@ def train_classification(model_class: str,
     raw_df = pd.read_csv(config.paths.train)
 
     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
-    cv_statistics = dict()
+    cv_statistics = {'f1_score': []}
+
+    model = CLASSIC_ML_MODEL_REGISTRY[model_class](**model_params)
+    models = []
 
     # Main training loop
     for fold, (train_idx, val_idx) in enumerate(skf.split(raw_df, raw_df[config.general.target])):
@@ -97,7 +103,21 @@ def train_classification(model_class: str,
         val_prep_df = val_preparer.prepare_dataset(**preprocessing_params)
         X_val, y_val = val_preparer.to_xy(val_prep_df)
 
-        print(fold, X_train.shape, X_val.shape)
+        # model training
+        model.fit(X_train, y_train)
+
+        # model validating
+        y_pred = model.predict(X_val)
+        f1_metric = f1_score(y_val, y_pred)
+        cv_statistics['f1_score'].append(f1_metric)
+
+        # model saving
+        models.append(model)
+
+    return cv_statistics, models
+
+
+        
 
 
 # def run_classification(data: ):

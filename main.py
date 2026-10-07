@@ -1,6 +1,7 @@
 # from src.datasets.titanic import TitanicDatasetPrepare
 from src.train_functions import train_classification
 from configs.config_titanic import config
+import pandas as pd
 
 
 def main():
@@ -21,7 +22,9 @@ def main():
     # print(X_test.shape, X.shape)
     # print(df.head(), '\n\n\n', test_df.head())
 
-    train_classification('LogisticRegression', config.classic_ml_models.LogisticRegression, config.preprocessing_params, config=config)
+    cv_statistics, models = train_classification('LogisticRegression', config.classic_ml_models.LogisticRegression, config.preprocessing_params, config=config)
+
+    print(pd.DataFrame(cv_statistics))
 
 
 

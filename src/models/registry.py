@@ -7,7 +7,7 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 from lightgbm import LGBMClassifier, LGBMRegressor
 from xgboost import XGBClassifier, XGBRegressor
 
-from models.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
+from .dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
 CLASSIC_ML_MODEL_REGISTRY = {
     'LogisticRegression': LogisticRegression,
