@@ -6,7 +6,7 @@ import pandas as pd
 
 # from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
-# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_error
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_error
 # from scipy.stats import mode
 
 # import torch
@@ -186,17 +186,17 @@ def make_standard_scaling(series: pd.Series, mean=None, std=None, requires_stati
 
 # # Training
 
-# def save_cv_metrics(y_true, y_pred) -> dict:
-#     """
-#     Returns a dictinory of metrics for classification task like: 
-#     {
-#         'Accuracy': ,
-#         'Precision': ,
-#         'Recall': ,
-#         'F1': 
-#     }
-#     """
-#     return {'accuracy': accuracy_score(y_true, y_pred), 'precision': precision_score(y_true, y_pred), 'recal': recall_score(y_true, y_pred), 'f1': f1_score(y_true, y_pred)}
+def save_cv_metrics(y_true, y_pred) -> dict:
+    """
+    Returns a dictinory of metrics for classification task like: 
+    {
+        'Accuracy': ,
+        'Precision': ,
+        'Recall': ,
+        'F1': 
+    }
+    """
+    return {'accuracy': accuracy_score(y_true, y_pred), 'precision': precision_score(y_true, y_pred), 'recal': recall_score(y_true, y_pred), 'f1': f1_score(y_true, y_pred)}
 
 
 # def metrics_to_string(stage, loss, accuracy, precision, recal, f1):
