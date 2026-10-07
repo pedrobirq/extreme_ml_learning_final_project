@@ -19,7 +19,7 @@ conf = {
     },
     'cat_features': ['Pclass', 'Embarked', 'Initial'],
     'num_features': ['Age', 'Fare', 'Family_size'],
-    'drop_features': ['Name', 'PassengerId', 'Parch', 'SibSp', 'Ticket', 'Cabin',  'Pclass'],
+    'drop_features': ['Name', 'PassengerId', 'Parch', 'SibSp', 'Ticket', 'Cabin'],
     'cv': {
         'k_folds': 5,
         'shuffle': True,

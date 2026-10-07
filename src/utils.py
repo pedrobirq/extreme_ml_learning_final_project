@@ -1,11 +1,11 @@
 # import numpy as np
-# import pandas as pd
+import pandas as pd
 # import matplotlib.pyplot as plt
 # import seaborn as sns 
 # import os
 
 # from sklearn.model_selection import train_test_split
-# from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 # from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_error
 # from scipy.stats import mode
 
@@ -42,22 +42,22 @@
 # # Preprocessing
 
 
-# def make_one_hot_encoding(series: pd.Series, drop_first=False) -> pd.DataFrame:
-#     """
-#     Performs OneHotEncoding on a Series
+def make_one_hot_encoding(series: pd.Series, drop_first=False) -> pd.DataFrame:
+    """
+    Performs OneHotEncoding on a Series
     
-#     Input: 
-#         series - a column to encode
-#         drop_first=False 
-#     Output: 
-#         encoded_df - pd.DataFrame
-#     """
-#     encoded = OneHotEncoder(sparse_output=False).fit_transform(series.to_numpy().reshape((-1, 1)))
-#     unique_vals = [f'{series.name}_{i}' for i in sorted(series.unique())]
-#     encoded_df = pd.DataFrame(encoded, columns=unique_vals)
-#     if drop_first:
-#         encoded_df = encoded_df.drop(columns=encoded_df.columns[0])
-#     return encoded_df
+    Input: 
+        series - a column to encode
+        drop_first=False 
+    Output: 
+        encoded_df - pd.DataFrame
+    """
+    encoded = OneHotEncoder(sparse_output=False).fit_transform(series.to_numpy().reshape((-1, 1)))
+    unique_vals = [f'{series.name}_{i}' for i in sorted(series.unique())]
+    encoded_df = pd.DataFrame(encoded, columns=unique_vals)
+    if drop_first:
+        encoded_df = encoded_df.drop(columns=encoded_df.columns[0])
+    return encoded_df
 
 
 # def make_standard_scaling(series: pd.Series, mean=None, std=None, requires_statistics=False):

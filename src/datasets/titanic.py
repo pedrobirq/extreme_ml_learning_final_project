@@ -3,10 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from configs.config_titanic import config
-from src import utils
+from src.utils import make_one_hot_encoding
 
 import torch
 from torch.utils.data import Dataset
+
 
 
 class TitanicDatasetPrepare:
@@ -75,7 +76,27 @@ class TitanicDatasetPrepare:
 
         return df_no_nulls
 
-    
+    def _make_OHE(self, columns_to_encode: list, df: pd.DataFrame, drop_first=True):
+
+        prep_df = df.copy()
+        encoded_columns = []
+        for column in columns_to_encode:
+            encoded_columns.append(make_one_hot_encoding(prep_df[column], drop_first=drop_first))
+
+        ohe_df = pd.concat(encoded_columns, axis=1)
+
+        if self.is_train:
+            self.statistics['ohe_columns'] = list(ohe_df.columns)
+        else:
+            expected_ohe_cols = self.statistics['ohe_columns']
+            ohe_df = ohe_df.reindex(columns=expected_ohe_cols, fill_value=0)
+
+        prep_df = pd.concat([prep_df, ohe_df], axis=1)
+
+        return prep_df.drop(columns=columns_to_encode)
+
+
+        
 
     # def prepare_dataset(self, statistics=None):
     #     self._clean_nulls()
@@ -110,6 +131,9 @@ class TitanicDatasetPrepare:
 
         if make_family_size_column:
             prep_df['Family_size'] = prep_df['Parch'] + prep_df['SibSp']
+
+        if OHE_cat_features is not None:
+            prep_df = self._make_OHE(OHE_cat_features, prep_df)
 
         if columns_to_drop is not None:
             prep_df = prep_df.drop(columns=columns_to_drop)
