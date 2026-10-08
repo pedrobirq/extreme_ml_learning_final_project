@@ -175,23 +175,23 @@ class TitanicDatasetPrepare:
             return X
 
 
-# class TitanicDatasetPrepareNN(Dataset):
-#     """ dNNs wrapper class for the titanic dataset """
-#     def __init__(self, df: pd.DataFrame):
-#         if 'Survived' in df.columns:
-#             self.is_train = True
-#             self.y = torch.tensor(df['Survived'].to_numpy(), dtype=torch.float32).unsqueeze(1)
-#             self.X = torch.tensor(df.drop(columns=['Survived']).to_numpy(), dtype=torch.float32)
-#         else:
-#             self.is_train = False
-#             self.X = torch.tensor(df.to_numpy(), dtype=torch.float32)
+class TitanicDatasetPrepareNN(Dataset):
+    """ dNNs wrapper class for the titanic dataset """
+    def __init__(self, df: pd.DataFrame):
+        if 'Survived' in df.columns:
+            self.is_train = True
+            self.y = torch.tensor(df['Survived'].to_numpy(), dtype=torch.float32).unsqueeze(1)
+            self.X = torch.tensor(df.drop(columns=['Survived']).to_numpy(), dtype=torch.float32)
+        else:
+            self.is_train = False
+            self.X = torch.tensor(df.to_numpy(), dtype=torch.float32)
 
 
-#     def __len__(self):
-#         return self.X.shape[0]
+    def __len__(self):
+        return self.X.shape[0]
 
-#     def __getitem__(self, index):
-#         if self.is_train:
-#             return self.X[index], self.y[index]
-#         else:
-#             return self.X[index]
+    def __getitem__(self, index):
+        if self.is_train:
+            return self.X[index], self.y[index]
+        else:
+            return self.X[index]

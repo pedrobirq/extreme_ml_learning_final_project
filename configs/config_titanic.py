@@ -11,6 +11,7 @@ conf = {
         'batch_size': 16,
         'epochs': 150,
         'save_predictions': False,
+        'save_weights': True,
         'target': 'Survived',
     },
     'paths': {
@@ -26,7 +27,7 @@ conf = {
         'num_features': ['Age', 'Fare', 'Family_size'],
     },
     'cv': {
-        'k_folds': 10,
+        'k_folds': 5,
         'shuffle': True,
     },
     'classic_ml_models': {
@@ -99,7 +100,7 @@ conf = {
     },
     'nn_models': {
         'SimpNN': {
-            'input': 12,
+            'input': 11,
             'output': 1,
             'hidden_size': 64
         },

@@ -227,3 +227,6 @@ test.py
 
 # submissions
 submissions/
+
+# checkpoints
+checkpoints/

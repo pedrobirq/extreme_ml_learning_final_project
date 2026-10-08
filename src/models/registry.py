@@ -9,6 +9,10 @@ from xgboost import XGBClassifier, XGBRegressor
 
 from .dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
+from torch.nn import BCEWithLogitsLoss, L1Loss
+from torch.optim import Adam
+from torch.optim.lr_scheduler import StepLR
+
 CLASSIC_ML_MODEL_REGISTRY = {
     'LogisticRegression': LogisticRegression,
     'KNeighborsClassifier': KNeighborsClassifier,
@@ -36,4 +40,16 @@ DL_REGISTRY = {
     'SimpNN': SimpNN,
     'MoreLayersNN': MoreLayersNN,
     'ImprovedNN': ImprovedNN,
+}
+
+NN_ATTRIBUTES = {
+    # Losses
+    'BCEWithLogitsLoss': BCEWithLogitsLoss,
+    'L1Loss': L1Loss,
+
+    # Schedulers
+    'StepLR': StepLR,
+
+    # Optimizers
+    'Adam': Adam
 }
