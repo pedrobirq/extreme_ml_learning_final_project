@@ -118,7 +118,7 @@ def train_classification(model_class: str,
         if not df:
             cv_metrics['f1_score'] = []
             cv_metrics['roc_auc_score'] = []
-            
+
             # model training
             model.fit(X_train, y_train)
 
@@ -322,7 +322,7 @@ def run_all_models(models_type, preprocessing_params, config):
             print()
 
 
-def make_test_predictions(models: list, fold_statistics: list, preprocessing_params, config, submission_name):
+def make_test_predictions(models: list, fold_statistics: list, preprocessing_params, config, submission_name, nn=False):
     test_raw_df = pd.read_csv(config.paths.test)
 
     fold_predictions = []
@@ -336,9 +336,29 @@ def make_test_predictions(models: list, fold_statistics: list, preprocessing_par
         )
         
         test_prep_df = test_preparer.prepare_dataset(**preprocessing_params)
-        X_test_fold = test_preparer.to_xy(test_prep_df)
-        
-        y_test_pred_fold = model.predict(X_test_fold)
+
+        if not nn:
+            X_test_fold = test_preparer.to_xy(test_prep_df)
+            
+            y_test_pred_fold = model.predict(X_test_fold)
+        else:
+            test_nn_preparer = TitanicDatasetPrepareNN(test_prep_df)
+            test_loader = DataLoader(test_nn_preparer)
+
+            y_test_pred_fold = []
+
+            with torch.no_grad():
+                model.eval()
+                for x in test_loader:
+                    x = x.to(config.general.device)
+
+                    pred = model(x)
+
+                    probs = torch.sigmoid(pred)
+                    preds = (probs > 0.5).int()
+
+                    y_test_pred_fold.extend(preds.flatten().tolist())
+
         fold_predictions.append(y_test_pred_fold)
 
     final_preds = mode(fold_predictions).mode

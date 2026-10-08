@@ -32,7 +32,7 @@ def main():
                                                                               'optimizer_class': 'Adam'})
 
     cv_statistics = utils.calc_cv_statistics(cv_metrics)
-    # make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'Baseline_LogisticRegression')
+    make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'SimpNN_FirstTry', nn=True)
     # print('~' * 10, 'LogisticRegression', '~' * 10)
     print(cv_statistics)
     # run_all_models('classic_ml_models', config.preprocessing_params, config)
