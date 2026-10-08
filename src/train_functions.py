@@ -1,6 +1,8 @@
 # from src import utils
 # from models.dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 import pandas as pd
+import numpy as np
+from scipy.stats import mode
 
 from src.datasets.titanic import TitanicDatasetPrepare 
 from src.models.registry import CLASSIC_ML_MODEL_REGISTRY
@@ -85,6 +87,7 @@ def train_classification(model_class: str,
 
     model = CLASSIC_ML_MODEL_REGISTRY[model_class](**model_params)
     models = []
+    fold_statistics = []
 
     # Main training loop
     for fold, (train_idx, val_idx) in enumerate(skf.split(raw_df, raw_df[config.general.target])):
@@ -114,14 +117,48 @@ def train_classification(model_class: str,
         cv_metrics['roc_auc_score'].append(roc_auc_score(y_val, y_proba[:, 1]))
         
 
-        # model saving
+        # model and statistics saving
         models.append(model)
+        fold_statistics.append(train_preparer.statistics)
 
-    return cv_metrics, models
+    return cv_metrics, models, fold_statistics
 
 
+def run_all_models(models_type, preprocessing_params, config):
+    if models_type == 'classic_ml_models':
+        for model_class, model_params in config.classic_ml_models.items():
+            cv_metrics = train_classification(model_class, model_params, preprocessing_params, config)[0]
+            print('~' * 10, model_class, '~' * 10)
+            print(utils.calc_cv_statistics(cv_metrics))
+            print()
+
+
+def make_test_predictions(models: list, fold_statistics: list, preprocessing_params, config, submission_name):
+    test_raw_df = pd.read_csv(config.paths.test)
+
+    fold_predictions = []
+
+    for fold_idx, (model, stats) in enumerate(zip(models, fold_statistics)):
+
+        test_preparer = TitanicDatasetPrepare(
+            test_raw_df, 
+            is_train=False, 
+            statistics=stats
+        )
         
+        test_prep_df = test_preparer.prepare_dataset(**preprocessing_params)
+        X_test_fold = test_preparer.to_xy(test_prep_df)
+        
+        y_test_pred_fold = model.predict(X_test_fold)
+        fold_predictions.append(y_test_pred_fold)
 
+    final_preds = mode(fold_predictions).mode
+
+    submission = pd.DataFrame({
+        'PassengerId': test_preparer.PassengerId,
+        'Survived': final_preds
+    })
+    submission.to_csv(config.paths.submissions + submission_name + '.csv', index=False)
 
 # def run_classification(data: ):
 #     pass

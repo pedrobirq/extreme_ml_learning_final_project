@@ -16,6 +16,7 @@ conf = {
     'paths': {
         'train': 'data/titanic/train.csv',
         'test': 'data/titanic/test.csv',
+        'submissions': 'submissions/titanic/'
     },
     'cat_features': ['Pclass', 'Embarked', 'Initial'],
     'num_features': ['Age', 'Fare', 'Family_size'],
