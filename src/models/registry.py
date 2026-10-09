@@ -11,7 +11,7 @@ from .dnn_models import SimpNN, MoreLayersNN, ImprovedNN
 
 from torch.nn import BCEWithLogitsLoss, L1Loss
 from torch.optim import Adam
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR
 
 CLASSIC_ML_MODEL_REGISTRY = {
     'LogisticRegression': LogisticRegression,
@@ -49,6 +49,7 @@ NN_ATTRIBUTES = {
 
     # Schedulers
     'StepLR': StepLR,
+    'CosineAnnealingLR': CosineAnnealingLR,
 
     # Optimizers
     'Adam': Adam

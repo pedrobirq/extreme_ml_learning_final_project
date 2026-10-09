@@ -23,16 +23,18 @@ def main():
     # print(X_test.shape, X.shape)
     # print(df.head(), '\n\n\n', test_df.head())
 
-    cv_metrics, models, fold_statistics = train_classification('SimpNN', 
-                                                               config.nn_models.SimpNN, 
+    nn_attributes={'scheduler_class': 'CosineAnnealingLR',
+                    'loss_class': 'BCEWithLogitsLoss',
+                    'optimizer_class': 'Adam'}
+
+    cv_metrics, models, fold_statistics = train_classification('LogisticRegression', 
+                                                               config.classic_ml_models.LogisticRegression, 
                                                                config.preprocessing_params,
                                                                config=config,
-                                                               nn_attributes={'scheduler_class': 'StepLR',
-                                                                              'loss_class': 'BCEWithLogitsLoss',
-                                                                              'optimizer_class': 'Adam'})
+                                                               )
 
     cv_statistics = utils.calc_cv_statistics(cv_metrics)
-    make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'SimpNN_FirstTry', nn=True)
+    make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'LogReg_norm_age_dist')
     # print('~' * 10, 'LogisticRegression', '~' * 10)
     print(cv_statistics)
     # run_all_models('classic_ml_models', config.preprocessing_params, config)

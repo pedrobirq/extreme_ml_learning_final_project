@@ -6,6 +6,8 @@ from typing import Union
 from configs.config_titanic import config
 from src.utils import make_one_hot_encoding, make_min_max_scaling, make_standard_scaling
 
+from sklearn.preprocessing import QuantileTransformer
+
 import torch
 from torch.utils.data import Dataset
 
@@ -45,7 +47,6 @@ class TitanicDatasetPrepare:
                     col_max = self.statistics[f"{col}_max"]
 
                 # encoded_col = make_min_max_scaling(prep_df[col])
-                # Защита от деления на 0 при константном признаке
                 denom = (col_max - col_min) if (col_max - col_min) != 0 else 1.0
                 prep_df[col] = (prep_df[col] - col_min) / denom
 
@@ -92,7 +93,6 @@ class TitanicDatasetPrepare:
             self.statistics['global_mean_fare'] = df_no_nulls['Fare'].mean()
 
         # Применение статистик к текущему фолду
-        # 1. Возраст
         mean_ages = self.statistics['mean_age_by_initial']
         global_age = self.statistics.get('global_mean_age', 28.0)
         for init, avg_age in mean_ages.items():
@@ -100,10 +100,8 @@ class TitanicDatasetPrepare:
             df_no_nulls.loc[mask, 'Age'] = avg_age
         df_no_nulls['Age'] = df_no_nulls['Age'].fillna(global_age)
 
-        # 2. Embarked
         df_no_nulls['Embarked'] = df_no_nulls['Embarked'].fillna(self.statistics['embarked_mode'])
 
-        # 3. Fare
         mean_fares = self.statistics['mean_fare_by_pclass']
         global_fare = self.statistics.get('global_mean_fare', 32.0)
         for pclass, avg_fare in mean_fares.items():
@@ -130,6 +128,25 @@ class TitanicDatasetPrepare:
         return prep_df
 
 
+    def _make_quantile_tranfrorm(self, columns_to_transform: list, df: pd.DataFrame, dist = 'normal', n_quantiles=100):
+        prep_df = df.copy()
+        for col in columns_to_transform:
+            if self.is_train:
+                qt = QuantileTransformer(
+                    output_distribution=dist, 
+                    n_quantiles=n_quantiles, 
+                    random_state=config.general.random_state
+                )
+                prep_df[col] = qt.fit_transform(prep_df[[col]])
+
+                # train/val sync
+                self.statistics[f"{col}_scaler"] = qt
+            else:
+                qt = self.statistics[f"{col}_scaler"]
+                prep_df[col] = qt.transform(prep_df[[col]])
+        return prep_df
+
+
     def prepare_dataset(self,
                         drop_duplicates=True, 
                         columns_to_drop=None, 
@@ -137,6 +154,7 @@ class TitanicDatasetPrepare:
                         make_family_size_column=True,
                         OHE_cat_features=None,
                         num_features=None,
+                        qt_transformn_features=None,
                         scaler='minmax'):
         prep_df = self.df.copy()
 
@@ -154,6 +172,9 @@ class TitanicDatasetPrepare:
 
         if OHE_cat_features is not None:
             prep_df = self._make_OHE(OHE_cat_features, prep_df)
+
+        if qt_transformn_features is not None:
+            prep_df = self._make_quantile_tranfrorm(qt_transformn_features, prep_df)
 
         if num_features is not None:
             prep_df = self._prepare_num_features(num_features, prep_df, scaler=scaler)

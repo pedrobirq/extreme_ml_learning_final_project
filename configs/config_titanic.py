@@ -9,7 +9,7 @@ conf = {
         'learning_rate': 0.1,
         'device': 'cpu',
         'batch_size': 16,
-        'epochs': 150,
+        'epochs': 100,
         'save_predictions': False,
         'save_weights': True,
         'target': 'Survived',
@@ -25,6 +25,7 @@ conf = {
         'columns_to_drop': ['Name', 'PassengerId', 'Parch', 'SibSp', 'Ticket', 'Cabin'],
         'OHE_cat_features': ['Pclass', 'Embarked', 'Initial'], 
         'num_features': ['Age', 'Fare', 'Family_size'],
+        'qt_transformn_features': ['Age']
     },
     'cv': {
         'k_folds': 5,
@@ -105,13 +106,13 @@ conf = {
             'hidden_size': 64
         },
         'MoreLayersNN': {
-            'input': 12,
+            'input': 11,
             'output': 1,
             'hidden_size1': 64,
             'hidden_size2': 32
         },
         'ImprovedNN': {
-            'input': 12,
+            'input': 11,
             'output': 1,
             'hidden_size1': 128,
             'hidden_size2': 64
@@ -121,11 +122,19 @@ conf = {
         'step_lr': {
                     'step_size': 5,
                     'gamma': 0.95
-                }
+                },
+        'cosine': {
+            'T_max': '${general.epochs}',
+            'eta_min': 1e-5
+        }
     },
     'early_stopping': {
         'threshold': 1e-4,
-        'patience': 15
+        'patience': 15,
+        'mode': 'min',
+        'patience': 20,
+        'threshold_mode': 'rel',
+        'save_optimizer': True
     }
 }
 

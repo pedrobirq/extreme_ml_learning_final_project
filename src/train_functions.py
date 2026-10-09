@@ -88,12 +88,12 @@ def train_classification(model_class: str,
     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
     cv_metrics = dict()
 
-    dl = False
+    nn = False
     if model_class in CLASSIC_ML_MODEL_REGISTRY:
         model = CLASSIC_ML_MODEL_REGISTRY[model_class](**model_params)
     elif model_class in DL_REGISTRY:
         model = DL_REGISTRY[model_class](**model_params).to(config.general.device)
-        df = True
+        nn = True
 
     models = []
     fold_statistics = []
@@ -115,9 +115,10 @@ def train_classification(model_class: str,
         val_prep_df = val_preparer.prepare_dataset(**preprocessing_params)
         X_val, y_val = val_preparer.to_xy(val_prep_df)
 
-        if not df:
-            cv_metrics['f1_score'] = []
-            cv_metrics['roc_auc_score'] = []
+        if not nn:
+            if 'f1_score' not in cv_metrics.keys():
+                cv_metrics['f1_score'] = []
+                cv_metrics['roc_auc_score'] = []
 
             # model training
             model.fit(X_train, y_train)
@@ -135,9 +136,9 @@ def train_classification(model_class: str,
             train_loader = DataLoader(train_nn_preparer, batch_size=config.general.batch_size, shuffle=True)
             val_loader = DataLoader(val_nn_preparer, batch_size=config.general.batch_size, shuffle=False)
 
-            early_stopping = EarlyStopping(checkpoint_name=f'{fold}_fold_{model_class}.pt')
+            early_stopping = EarlyStopping(checkpoint_name=f'{fold}_fold_{model_class}.pt', **config.early_stopping)
 
-            print('FOLD ', fold)
+            print('FOLD ', fold + 1)
             model, best_metrics, history = train_nn_classification(model, 
                                                      train_loader=train_loader, 
                                                      val_loader=val_loader,
@@ -145,7 +146,6 @@ def train_classification(model_class: str,
                                                      early_stopping=early_stopping,
                                                      **nn_attributes
                                                      )
-            print(fold)
 
             for key, value in best_metrics.items():
                 if key not in cv_metrics.keys():
@@ -177,6 +177,8 @@ def train_nn_classification(model,
     if scheduler_class:
         if scheduler_class == 'StepLR':
             scheduler = NN_ATTRIBUTES[scheduler_class](optimizer, **config.schedulers.step_lr)
+        elif scheduler_class == 'CosineAnnealingLR':
+            scheduler = NN_ATTRIBUTES[scheduler_class](optimizer, **config.schedulers.cosine)
 
     history = {
         'train_loss': [],
