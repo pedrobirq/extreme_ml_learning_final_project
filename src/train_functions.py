@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 from scipy.stats import mode
+from pathlib import Path
 
 from src.datasets.titanic import TitanicDatasetPrepare, TitanicDatasetPrepareNN
 from src.models.registry import CLASSIC_ML_MODEL_REGISTRY, DL_REGISTRY, NN_ATTRIBUTES
@@ -88,12 +89,15 @@ def train_classification(model_class: str,
     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
     cv_metrics = dict()
 
-    nn = False
-    if model_class in CLASSIC_ML_MODEL_REGISTRY:
-        model = CLASSIC_ML_MODEL_REGISTRY[model_class](**model_params)
-    elif model_class in DL_REGISTRY:
-        model = DL_REGISTRY[model_class](**model_params).to(config.general.device)
-        nn = True
+    model_name = model_class
+    is_nn = False
+    if model_name in CLASSIC_ML_MODEL_REGISTRY:
+        model_builder = CLASSIC_ML_MODEL_REGISTRY[model_name]
+    elif model_name in DL_REGISTRY:
+        model_builder = DL_REGISTRY[model_name]
+        is_nn = True
+    else:
+        raise ValueError(f"Model '{model_name}' wasn't in the registry")
 
     models = []
     fold_statistics = []
@@ -115,7 +119,9 @@ def train_classification(model_class: str,
         val_prep_df = val_preparer.prepare_dataset(**preprocessing_params)
         X_val, y_val = val_preparer.to_xy(val_prep_df)
 
-        if not nn:
+        if not is_nn:
+            model = model_builder(**model_params)
+
             if 'f1_score' not in cv_metrics.keys():
                 cv_metrics['f1_score'] = []
                 cv_metrics['roc_auc_score'] = []
@@ -129,14 +135,24 @@ def train_classification(model_class: str,
             
             cv_metrics['f1_score'].append(f1_score(y_val, y_pred))
             cv_metrics['roc_auc_score'].append(roc_auc_score(y_val, y_proba[:, 1]))
+
+            models.append(model)
         else:
+            model = model_builder(**model_params).to(config.general.device)
+
             train_nn_preparer = TitanicDatasetPrepareNN(train_prep_df)
             val_nn_preparer = TitanicDatasetPrepareNN(val_prep_df)
 
             train_loader = DataLoader(train_nn_preparer, batch_size=config.general.batch_size, shuffle=True)
             val_loader = DataLoader(val_nn_preparer, batch_size=config.general.batch_size, shuffle=False)
 
-            early_stopping = EarlyStopping(checkpoint_name=f'{fold}_fold_{model_class}.pt', **config.early_stopping)
+            checkpoint_filename = f"fold_{fold}_{model_name}.pt"
+
+            early_stopping = EarlyStopping(
+                checkpoint_path=Path("checkpoints") / checkpoint_filename,
+                save_to_disk=True,  # Во время Optuna пишем ТОЛЬКО в RAM
+                **config.early_stopping,
+            )
 
             print('FOLD ', fold + 1)
             model, best_metrics, history = train_nn_classification(model, 
@@ -152,9 +168,10 @@ def train_classification(model_class: str,
                     cv_metrics[key] = []
 
                 cv_metrics[key].append(value)
+
+            models.append(model.cpu())
         
-        # model and statistics saving
-        models.append(model)
+        # statistics saving
         fold_statistics.append(train_preparer.statistics)
 
     return cv_metrics, models, fold_statistics
