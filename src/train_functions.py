@@ -31,7 +31,7 @@ def train_classification(model_class: str,
     raw_df = pd.read_csv(config.paths.train)
 
     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
-    cv_metrics = dict()
+    cv_metrics = {'val_f1': [], 'val_roc_auc': []}
 
     model_name = model_class
     is_nn = False
@@ -66,10 +66,6 @@ def train_classification(model_class: str,
         if not is_nn:
             model = model_builder(**model_params)
 
-            if 'f1_score' not in cv_metrics.keys():
-                cv_metrics['f1_score'] = []
-                cv_metrics['roc_auc_score'] = []
-
             # model training
             model.fit(X_train, y_train)
 
@@ -77,8 +73,8 @@ def train_classification(model_class: str,
             y_pred = model.predict(X_val)
             y_proba = model.predict_proba(X_val)
             
-            cv_metrics['f1_score'].append(f1_score(y_val, y_pred))
-            cv_metrics['roc_auc_score'].append(roc_auc_score(y_val, y_proba[:, 1]))
+            cv_metrics['val_f1'].append(f1_score(y_val, y_pred))
+            cv_metrics['val_roc_auc'].append(roc_auc_score(y_val, y_proba[:, 1]))
 
             models.append(model)
         else:
