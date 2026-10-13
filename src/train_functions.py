@@ -13,6 +13,8 @@ from src import utils
 from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics import f1_score, auc, roc_auc_score
 
+import optuna
+
 # from sklearn.linear_model import LogisticRegression, LinearRegression, Lasso, Ridge, ElasticNet
 # from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 # from sklearn.tree import DecisionTreeClassifier
@@ -82,7 +84,8 @@ def train_classification(model_class: str,
                          model_params: dict,
                          preprocessing_params: dict,
                          config,
-                         nn_attributes: dict = None):
+                         nn_attributes: dict = None,
+                         optuna_optimizing=None):
 
     raw_df = pd.read_csv(config.paths.train)
 
@@ -174,7 +177,49 @@ def train_classification(model_class: str,
         # statistics saving
         fold_statistics.append(train_preparer.statistics)
 
+    if optuna_optimizing is not None and optuna_optimizing in cv_metrics.keys():
+        return float(np.mean(cv_metrics[optuna_optimizing]))
+    elif optuna_optimizing is not None:
+        raise ValueError('Not an appropriate metric')
+
     return cv_metrics, models, fold_statistics
+
+
+def objective(trial: optuna.Trial):
+
+    from configs.config_titanic import config
+
+    params = {
+        "loss_function": "Logloss",
+        "eval_metric": "F1",
+        "random_seed": config.general.random_state,
+        "verbose": False,
+        # Число деревьев и темп обучения
+        "iterations": trial.suggest_int("iterations", 300, 1200, step=100),
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+        # Структура деревьев
+        "depth": trial.suggest_int("depth", 4, 10),
+        "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1.0, 10.0, log=True),
+        "random_strength": trial.suggest_float("random_strength", 1e-3, 10.0, log=True),
+        # Сэмплирование данных
+        "bootstrap_type": trial.suggest_categorical(
+            "bootstrap_type", ["Bayesian", "Bernoulli"]
+        ),
+    }
+
+    # Специфичные параметры для разных типов бутстрапа
+    if params["bootstrap_type"] == "Bayesian":
+        params["bagging_temperature"] = trial.suggest_float(
+            "bagging_temperature", 0.0, 1.0
+        )
+    elif params["bootstrap_type"] == "Bernoulli":
+        params["subsample"] = trial.suggest_float("subsample", 0.5, 1.0)
+
+    
+
+    f1_scores = train_classification('CatBoostClassifier', params, config.preprocessing_params, config, optuna_optimizing='f1_score')
+
+    return f1_scores
 
 
 def train_nn_classification(model,

@@ -25,7 +25,6 @@ conf = {
         'columns_to_drop': ['Name', 'PassengerId', 'Parch', 'SibSp', 'Ticket', 'Cabin'],
         'OHE_cat_features': ['Pclass', 'Embarked', 'Initial'], 
         'num_features': ['Age', 'Fare', 'Family_size'],
-        'qt_transformn_features': ['Age']
     },
     'cv': {
         'k_folds': 5,
@@ -53,15 +52,16 @@ conf = {
             'random_state': '${general.random_state}'
         },
         'CatBoostClassifier': {
-            'iterations': 100,
-            'depth': 4,
-            'learning_rate': '${general.learning_rate}',
+            'iterations': 700,
+            'depth': 6,
+            'learning_rate': 0.011250036517633063,
             'loss_function': 'Logloss',
             'verbose': False,
-            'l2_leaf_reg': 5,
-            'bagging_temperature': 1.0,
-            'random_strength': 1.0,
-            'random_state': '${general.random_state}'
+            'l2_leaf_reg': 2.0323321580745892,
+            'random_strength': 0.012332764926529877,
+            'bootstrap_type': 'Bernoulli',
+            'random_state': '${general.random_state}',
+            'subsample': 0.9318976570254179
         },
         'LGBMClassifier': {
             'metric': 'binary_logloss',

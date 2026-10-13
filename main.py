@@ -1,45 +1,43 @@
 # from src.datasets.titanic import TitanicDatasetPrepare
-from src.train_functions import train_classification, run_all_models, make_test_predictions
+from src.train_functions import train_classification, run_all_models, make_test_predictions, objective
 from src import utils
 from configs.config_titanic import config
+import optuna
 import pandas as pd
 
 
 def main():
-    # Data preprocessing
-    # dataset_preparer = TitanicDatasetPrepare(config.paths.train)
-    # df = dataset_preparer.prepare_dataset(columns_to_drop=config.drop_features, 
-    #                                       OHE_cat_features=config.cat_features, 
-    #                                       num_features=config.num_features,
-    #                                       )
-    # X, y = dataset_preparer.to_xy(df)
+    # nn_attributes={'scheduler_class': 'CosineAnnealingLR',
+    #                 'loss_class': 'BCEWithLogitsLoss',
+    #                 'optimizer_class': 'Adam'}
 
-    # test_dataset_preparer = TitanicDatasetPrepare(config.paths.test, is_train=False, statistics=dataset_preparer.statistics)
-    # test_df = test_dataset_preparer.prepare_dataset(columns_to_drop=config.drop_features,
-    #                                                 OHE_cat_features=config.cat_features, 
-    #                                                 num_features=config.num_features,
-    #                                                 )
-    # X_test = test_dataset_preparer.to_xy(test_df)
-    # print(X_test.shape, X.shape)
-    # print(df.head(), '\n\n\n', test_df.head())
+    # cv_metrics, models, fold_statistics = train_classification('CatBoostClassifier', 
+    #                                                            config.classic_ml_models.CatBoostClassifier, 
+    #                                                            config.preprocessing_params,
+    #                                                            config=config,
+    #                                                            )
 
-    nn_attributes={'scheduler_class': 'CosineAnnealingLR',
-                    'loss_class': 'BCEWithLogitsLoss',
-                    'optimizer_class': 'Adam'}
+    # cv_statistics = utils.calc_cv_statistics(cv_metrics)
+    # make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'CatBoostClassifier_optuna_tuned')
+    # print(cv_statistics)
 
-    cv_metrics, models, fold_statistics = train_classification('SimpNN', 
-                                                               config.nn_models.SimpNN, 
-                                                               config.preprocessing_params,
-                                                               config=config,
-                                                               nn_attributes=nn_attributes
-                                                               )
+    # ~~~~~ OPTUNA INVOLVE ~~~~~~
 
-    cv_statistics = utils.calc_cv_statistics(cv_metrics)
-    make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'Test', nn=True)
-    # print('~' * 10, 'LogisticRegression', '~' * 10)
-    print(cv_statistics)
-    # run_all_models('classic_ml_models', config.preprocessing_params, config)
+    sampler = optuna.samplers.TPESampler(seed=config.general.random_state)
 
+    study = optuna.create_study(
+        direction="maximize",  # максимизируем f1
+        sampler=sampler,
+        study_name="catboost_f1_optimization",
+    )
+
+    # n_trials: количество итераций; timeout: лимит в секундах
+    study.optimize(objective, n_trials=30, timeout=600, show_progress_bar=True)
+
+    print(f"Лучший результат f1: {study.best_value:.5f}")
+    print("Лучшие параметры:")
+    for key, value in study.best_params.items():
+        print(f"  {key}: {value}")
 
 if __name__ == '__main__':
     main()
