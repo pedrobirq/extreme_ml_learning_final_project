@@ -3,6 +3,7 @@ import numpy as np
 from scipy.stats import mode
 from pathlib import Path
 
+from configs.config_titanic import config
 from src.datasets.titanic import TitanicDatasetPrepare, TitanicDatasetPrepareNN
 from src.models.registry import CLASSIC_ML_MODEL_REGISTRY, DL_REGISTRY, NN_ATTRIBUTES
 from src.models.dnn_models import EarlyStopping
@@ -21,10 +22,14 @@ from torch.optim.lr_scheduler import StepLR
 from tqdm.auto import tqdm
 
 
+# def make_folds(config):
+#     raw_df = pd.read_csv(config.paths.train)
+#     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
+
+
 def train_classification(model_class: str, 
                          model_params: dict,
                          preprocessing_params: dict,
-                         config,
                          nn_attributes: dict = None,
                          optuna_optimizing=None):
 
@@ -98,7 +103,6 @@ def train_classification(model_class: str,
             model, best_metrics, history = train_nn_classification(model, 
                                                      train_loader=train_loader, 
                                                      val_loader=val_loader,
-                                                     config=config,
                                                      early_stopping=early_stopping,
                                                      **nn_attributes
                                                      )
@@ -123,9 +127,6 @@ def train_classification(model_class: str,
 
 
 def objective(trial: optuna.Trial):
-
-    from configs.config_titanic import config
-
     params = {
         "loss_function": "Logloss",
         "eval_metric": "F1",
@@ -165,7 +166,6 @@ def train_nn_classification(model,
                             scheduler_class: str,
                             train_loader: DataLoader,
                             val_loader: DataLoader,
-                            config,
                             early_stopping: EarlyStopping = None,
                             ):
 

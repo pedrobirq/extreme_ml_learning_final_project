@@ -11,14 +11,14 @@ def main():
                     'loss_class': 'BCEWithLogitsLoss',
                     'optimizer_class': 'Adam'}
 
-    cv_metrics, models, fold_statistics = train_classification('CatBoostClassifier', 
-                                                               config.classic_ml_models.CatBoostClassifier, 
+    cv_metrics, models, fold_statistics = train_classification('SimpNN', 
+                                                               config.nn_models.SimpNN, 
                                                                config.preprocessing_params,
-                                                               config=config,
+                                                               nn_attributes=nn_attributes
                                                                )
 
     cv_statistics = utils.calc_cv_statistics(cv_metrics)
-    make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'Test')
+    make_test_predictions(models, fold_statistics, config.preprocessing_params, config, 'Test', nn=True)
     print(cv_statistics)
 
     # ~~~~~ OPTUNA INVOLVE ~~~~~~
