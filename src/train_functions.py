@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import mode
 from pathlib import Path
+from typing import Optional, Union
 
 from configs.config_titanic import config
 from src.datasets.titanic import TitanicDatasetPrepare, TitanicDatasetPrepareNN
@@ -22,38 +23,23 @@ from torch.optim.lr_scheduler import StepLR
 from tqdm.auto import tqdm
 
 
-# def make_folds(config):
-#     raw_df = pd.read_csv(config.paths.train)
-#     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
-
-
-def train_classification(model_class: str, 
-                         model_params: dict,
-                         preprocessing_params: dict,
-                         nn_attributes: dict = None,
-                         optuna_optimizing=None):
-
+def make_folds(preprocessing_params, is_nn=False):
     raw_df = pd.read_csv(config.paths.train)
-
     skf = StratifiedKFold(n_splits=config.cv.k_folds, shuffle=config.cv.shuffle, random_state=config.general.random_state)
-    cv_metrics = {'val_f1': [], 'val_roc_auc': []}
 
-    model_name = model_class
-    is_nn = False
-    if model_name in CLASSIC_ML_MODEL_REGISTRY:
-        model_builder = CLASSIC_ML_MODEL_REGISTRY[model_name]
-    elif model_name in DL_REGISTRY:
-        model_builder = DL_REGISTRY[model_name]
-        is_nn = True
+    if is_nn:
+        fold_train_loaders = []
+        fold_val_loaders = []
     else:
-        raise ValueError(f"Model '{model_name}' wasn't in the registry")
-
-    models = []
+        fold_X_trains = []
+        fold_X_vals = []
+        fold_y_trains = []
+        fold_y_vals = []
+    
     fold_statistics = []
 
-    # Main training loop
     for fold, (train_idx, val_idx) in enumerate(skf.split(raw_df, raw_df[config.general.target])):
-
+    
         # raw data slices
         train_fold_df = raw_df.iloc[train_idx].copy()
         val_fold_df = raw_df.iloc[val_idx].copy()
@@ -68,7 +54,54 @@ def train_classification(model_class: str,
         val_prep_df = val_preparer.prepare_dataset(**preprocessing_params)
         X_val, y_val = val_preparer.to_xy(val_prep_df)
 
-        if not is_nn:
+        # data saving
+        if is_nn:
+            train_nn_preparer = TitanicDatasetPrepareNN(train_prep_df)
+            val_nn_preparer = TitanicDatasetPrepareNN(val_prep_df)
+
+            train_loader = DataLoader(train_nn_preparer, batch_size=config.general.batch_size, shuffle=True)
+            val_loader = DataLoader(val_nn_preparer, batch_size=config.general.batch_size, shuffle=False)
+
+            fold_train_loaders.append(train_loader)
+            fold_val_loaders.append(val_loader)
+        else:
+            fold_X_trains.append(X_train)
+            fold_X_vals.append(X_val)
+            fold_y_trains.append(y_train)
+            fold_y_vals.append(y_val)
+
+        # statistics saving
+        fold_statistics.append(train_preparer.statistics)
+
+    if is_nn:
+        return [fold_train_loaders, fold_val_loaders], fold_statistics
+    else:
+        return [fold_X_trains, fold_X_vals, fold_y_trains, fold_y_vals], fold_statistics
+
+
+def train_classification(model_class: str, 
+                         model_params: dict,
+                        #  preprocessing_params: dict,
+                         folds: list,
+                         nn_attributes: dict = None,
+                         optuna_optimizing=None):
+
+    cv_metrics = {'val_f1': [], 'val_roc_auc': []}
+
+    model_name = model_class
+    is_nn = False
+    if model_name in CLASSIC_ML_MODEL_REGISTRY:
+        model_builder = CLASSIC_ML_MODEL_REGISTRY[model_name]
+    elif model_name in DL_REGISTRY:
+        model_builder = DL_REGISTRY[model_name]
+        is_nn = True
+    else:
+        raise ValueError(f"Model '{model_name}' wasn't in the registry")
+
+    models = []
+
+    if not is_nn:
+        for fold, (X_train, X_val, y_train, y_val) in enumerate(zip(*folds)):
             model = model_builder(**model_params)
 
             # model training
@@ -82,30 +115,25 @@ def train_classification(model_class: str,
             cv_metrics['val_roc_auc'].append(roc_auc_score(y_val, y_proba[:, 1]))
 
             models.append(model)
-        else:
+    else:
+        for fold, (train_loader, val_loader) in enumerate(zip(*folds)):
             model = model_builder(**model_params).to(config.general.device)
-
-            train_nn_preparer = TitanicDatasetPrepareNN(train_prep_df)
-            val_nn_preparer = TitanicDatasetPrepareNN(val_prep_df)
-
-            train_loader = DataLoader(train_nn_preparer, batch_size=config.general.batch_size, shuffle=True)
-            val_loader = DataLoader(val_nn_preparer, batch_size=config.general.batch_size, shuffle=False)
 
             checkpoint_filename = f"fold_{fold}_{model_name}.pt"
 
             early_stopping = EarlyStopping(
                 checkpoint_path=Path("checkpoints") / checkpoint_filename,
-                save_to_disk=True,  # Во время Optuna пишем ТОЛЬКО в RAM
+                save_to_disk=(optuna_optimizing is None),  # Во время Optuna пишем ТОЛЬКО в RAM
                 **config.early_stopping,
             )
 
             print('FOLD ', fold + 1)
             model, best_metrics, history = train_nn_classification(model, 
-                                                     train_loader=train_loader, 
-                                                     val_loader=val_loader,
-                                                     early_stopping=early_stopping,
-                                                     **nn_attributes
-                                                     )
+                                                        train_loader=train_loader, 
+                                                        val_loader=val_loader,
+                                                        early_stopping=early_stopping,
+                                                        **nn_attributes
+                                                        )
 
             for key, value in best_metrics.items():
                 if key not in cv_metrics.keys():
@@ -113,17 +141,14 @@ def train_classification(model_class: str,
 
                 cv_metrics[key].append(value)
 
-            models.append(model.cpu())
-        
-        # statistics saving
-        fold_statistics.append(train_preparer.statistics)
+                models.append(model.cpu())
 
     if optuna_optimizing is not None and optuna_optimizing in cv_metrics.keys():
         return float(np.mean(cv_metrics[optuna_optimizing]))
     elif optuna_optimizing is not None:
         raise ValueError('Not an appropriate metric')
 
-    return cv_metrics, models, fold_statistics
+    return cv_metrics, models
 
 
 def objective(trial: optuna.Trial):
@@ -323,7 +348,7 @@ def run_all_models(models_type, preprocessing_params, config):
             print()
 
 
-def make_test_predictions(models: list, fold_statistics: list, preprocessing_params, config, submission_name, nn=False):
+def make_test_predictions(models: list, fold_statistics: list, preprocessing_params, submission_name, nn=False):
     test_raw_df = pd.read_csv(config.paths.test)
 
     fold_predictions = []
@@ -350,6 +375,7 @@ def make_test_predictions(models: list, fold_statistics: list, preprocessing_par
 
             with torch.no_grad():
                 model.eval()
+                model.to(config.general.device)
                 for x in test_loader:
                     x = x.to(config.general.device)
 
