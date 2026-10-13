@@ -6,8 +6,6 @@ from pathlib import Path
 import copy
 from typing import Dict, Optional, Union
 
-from configs.config import config
-
 
 class SimpNN(nn.Module):
     def __init__(self, input, output, hidden_size):

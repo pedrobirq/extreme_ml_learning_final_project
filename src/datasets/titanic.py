@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from typing import Union
-# import matplotlib.pyplot as plt
 
 from configs.config_titanic import config
 from src.utils import make_one_hot_encoding, make_min_max_scaling, make_standard_scaling
