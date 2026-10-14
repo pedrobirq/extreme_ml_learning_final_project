@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 from configs.config_titanic import config
 from src.datasets.titanic import TitanicDatasetPrepare, TitanicDatasetPrepareNN
-from src.models.registry import CLASSIC_ML_MODEL_REGISTRY, DL_REGISTRY, NN_ATTRIBUTES
+from src.models.registry import CLASSIC_ML_MODEL_REGISTRY, DL_REGISTRY, NN_ATTRIBUTES, PARAMETERS_REGISTRY
 from src.models.dnn_models import EarlyStopping
 from src import utils
 
@@ -395,3 +395,68 @@ def make_test_predictions(models: list, fold_statistics: list, preprocessing_par
         'Survived': final_preds
     })
     submission.to_csv(config.paths.submissions + submission_name + '.csv', index=False)
+    
+    
+def create_objective(
+    model_class: str,
+    folds: list,
+    metric_name: str = "val_f1",
+    ):
+    if model_class not in PARAMETERS_REGISTRY:
+        raise ValueError(
+            f"Модель '{model_class}' не найдена в PARAMETERS_REGISTRY. "
+            f"Доступны: {list(PARAMETERS_REGISTRY.keys())}"
+        )
+
+    param_sampler = PARAMETERS_REGISTRY[model_class]
+
+    def objective(trial: optuna.Trial) -> float:
+        # 1. Получаем объединенные (базовые + настраиваемые) параметры для текущего trial
+        current_params = param_sampler(trial)
+
+        # 2. Вызываем кросс-валидацию по заранее подготовленным фолдам
+        score = train_classification(
+            model_class=model_class,
+            model_params=current_params,
+            folds=folds,
+            optuna_optimizing=metric_name,
+        )
+
+        return score
+
+    return objective
+
+
+def run_optuna(model_name: str, target_metric: str, folds: list, n_trials=30, timeout=600):
+    # 3. Создаем сэмплер и исследование Optuna
+    sampler = optuna.samplers.TPESampler(seed=config.general.random_state)
+    study = optuna.create_study(
+        direction="maximize",
+        sampler=sampler,
+        study_name=f"{model_name}_{target_metric}_optimization",
+    )
+
+    # 4. Создаем objective через фабрику и запускаем поиск
+    objective = create_objective(
+        model_class=model_name,
+        folds=folds,
+        metric_name=target_metric,
+    )
+
+    study.optimize(objective, n_trials=n_trials, timeout=timeout, show_progress_bar=True)
+
+    print(f"\n[Optuna] Подбор завершен для {model_name}!")
+    print(f"[Optuna] Лучший результат {target_metric}: {study.best_value:.5f}")
+
+    # 5. Восстанавливаем ПОЛНЫЙ набор параметров (базовые + подобранные Optuna)
+    base_params = PARAMETERS_REGISTRY[model_name](None)
+    final_best_params = {**base_params, **study.best_params}
+
+    # Если в LogisticRegression использовался префикс (solver_l1 / solver_l2), нормализуем ключ solver:
+    if model_name == "LogisticRegression":
+        for solver_key in ["solver_l1", "solver_l2"]:
+            if solver_key in final_best_params:
+                final_best_params["solver"] = final_best_params.pop(solver_key)
+
+    print("\nПолный словарь параметров для финальной модели:")
+    print(final_best_params)

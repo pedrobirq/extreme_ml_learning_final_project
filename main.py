@@ -1,4 +1,4 @@
-from src.train_functions import train_classification, run_all_models, make_test_predictions, objective, make_folds
+from src.train_functions import train_classification, run_all_models, make_test_predictions, objective, make_folds, run_optuna
 from src import utils
 from configs.config_titanic import config
 import optuna
@@ -6,21 +6,23 @@ import pandas as pd
 
 
 def main():
-    nn_attributes={'scheduler_class': 'StepLR',
-                    'loss_class': 'BCEWithLogitsLoss',
-                    'optimizer_class': 'Adam'}
-
-    folds, fold_statistics = make_folds(config.preprocessing_params, is_nn=True)
-
-    cv_metrics, models = train_classification( 'ImprovedNN', 
-                                                config.nn_models.ImprovedNN, 
-                                                folds,
-                                                nn_attributes=nn_attributes
-                                                )
+    MODEL_NAME = 'LogisticRegression'
     
-    cv_statistics = utils.calc_cv_statistics(cv_metrics)
-    make_test_predictions(models, fold_statistics, config.preprocessing_params, 'Test', nn=True)
-    print(cv_statistics)
+    # nn_attributes={'scheduler_class': 'StepLR',
+    #                 'loss_class': 'BCEWithLogitsLoss',
+    #                 'optimizer_class': 'Adam'}
+
+    # folds, fold_statistics = make_folds(config.preprocessing_params, is_nn=True)
+
+    # cv_metrics, models = train_classification( 'ImprovedNN', 
+    #                                             config.nn_models.ImprovedNN, 
+    #                                             folds,
+    #                                             nn_attributes=nn_attributes
+    #                                             )
+    
+    # cv_statistics = utils.calc_cv_statistics(cv_metrics)
+    # make_test_predictions(models, fold_statistics, config.preprocessing_params, 'Test', nn=True)
+    # print(cv_statistics)
 
     # ~~~~~ OPTUNA INVOLVE ~~~~~~
 
@@ -39,6 +41,11 @@ def main():
     # print("Лучшие параметры:")
     # for key, value in study.best_params.items():
     #     print(f"  {key}: {value}")
+    
+    folds, fold_statistics = make_folds(config.preprocessing_params)
+    run_optuna(model_name=MODEL_NAME,
+               target_metric='val_f1',
+               folds=folds)
 
 if __name__ == '__main__':
     main()
