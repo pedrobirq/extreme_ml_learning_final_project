@@ -16,21 +16,16 @@ def main():
 
     folds, fold_statistics = make_folds(config.preprocessing_params, is_nn=is_nn)
 
-    cv_metrics, models = train_classification( MODEL_NAME, 
-                                                MODEL_PARAMS[MODEL_NAME], 
-                                                folds,
-                                                nn_attributes=nn_attributes 
-                                                )
+    cv_metrics, models = train_classification(MODEL_NAME, 
+                                              MODEL_PARAMS[MODEL_NAME], 
+                                              folds,
+                                              nn_attributes=nn_attributes 
+                                            )
     
     cv_statistics = utils.calc_cv_statistics(cv_metrics)
     make_test_predictions(models, fold_statistics, config.preprocessing_params, MODEL_NAME + '_with_ElasticNet', is_nn=is_nn)
     print(cv_statistics)
 
-    # ~~~~~ OPTUNA INVOLVE ~~~~~~
-    
-    # run_optuna(model_name=MODEL_NAME,
-    #            target_metric='val_f1',
-    #            folds=folds)
 
 if __name__ == '__main__':
     main()
