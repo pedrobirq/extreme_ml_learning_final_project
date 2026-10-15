@@ -359,6 +359,10 @@ def make_test_predictions(models: list, fold_statistics: list, preprocessing_par
         'PassengerId': test_preparer.PassengerId,
         'Survived': final_preds
     })
+    
+    output_dir = Path(config.paths.submissions)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
     submission.to_csv(config.paths.submissions + submission_name + '.csv', index=False)
     
     
