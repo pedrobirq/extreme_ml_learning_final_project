@@ -40,6 +40,14 @@ CLASSIC_ML_MODEL_REGISTRY = {
 }
 
 
+MODEL_PARAMS = {
+    'LogisticRegression': config.classic_ml_models.LogisticRegression,
+    'CatBoostClassifier': config.classic_ml_models.CatBoostClassifier,
+    'LGBMClassifier': config.classic_ml_models.LGBMClassifier,
+    'XGBClassifier': config.classic_ml_models.XGBClassifier,
+}
+
+
 DL_REGISTRY = {
     'SimpNN': SimpNN,
     'MoreLayersNN': MoreLayersNN,

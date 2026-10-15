@@ -348,7 +348,7 @@ def run_all_models(models_type, preprocessing_params, config):
             print()
 
 
-def make_test_predictions(models: list, fold_statistics: list, preprocessing_params, submission_name, nn=False):
+def make_test_predictions(models: list, fold_statistics: list, preprocessing_params, submission_name, is_nn=False):
     test_raw_df = pd.read_csv(config.paths.test)
 
     fold_predictions = []
@@ -363,7 +363,7 @@ def make_test_predictions(models: list, fold_statistics: list, preprocessing_par
         
         test_prep_df = test_preparer.prepare_dataset(**preprocessing_params)
 
-        if not nn:
+        if not is_nn:
             X_test_fold = test_preparer.to_xy(test_prep_df)
             
             y_test_pred_fold = model.predict(X_test_fold)
@@ -453,10 +453,10 @@ def run_optuna(model_name: str, target_metric: str, folds: list, n_trials=30, ti
     final_best_params = {**base_params, **study.best_params}
 
     # Если в LogisticRegression использовался префикс (solver_l1 / solver_l2), нормализуем ключ solver:
-    if model_name == "LogisticRegression":
-        for solver_key in ["solver_l1", "solver_l2"]:
-            if solver_key in final_best_params:
-                final_best_params["solver"] = final_best_params.pop(solver_key)
+    # if model_name == "LogisticRegression":
+    #     for solver_key in ["solver_l1", "solver_l2"]:
+    #         if solver_key in final_best_params:
+    #             final_best_params["solver"] = final_best_params.pop(solver_key)
 
     print("\nПолный словарь параметров для финальной модели:")
     print(final_best_params)

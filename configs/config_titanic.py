@@ -32,8 +32,12 @@ conf = {
     },
     'classic_ml_models': {
         'LogisticRegression': {
-            'C': 2.82,
-            'random_state': '${general.random_state}'
+            'C': 1.2877324848977032,
+            'random_state': '${general.random_state}',
+            # 'penalty': 'elasticnet',
+            'l1_ratio': 0.07633822231326909,
+            'max_iter': 1000,
+            'solver': 'saga'
         },
         'KNeighborsClassifier': {
             'n_neighbors': 5
@@ -52,41 +56,45 @@ conf = {
             'random_state': '${general.random_state}'
         },
         'CatBoostClassifier': {
-            'iterations': 700,
-            'depth': 6,
-            'learning_rate': 0.011250036517633063,
-            'loss_function': 'Logloss',
-            'verbose': False,
-            'l2_leaf_reg': 2.0323321580745892,
-            'random_strength': 0.012332764926529877,
-            'bootstrap_type': 'Bernoulli',
-            'random_state': '${general.random_state}',
-            'subsample': 0.9318976570254179
-        },
+            'loss_function': 'Logloss', 
+            'eval_metric': 'F1', 
+            'random_seed': '${general.random_state}', 
+            'verbose': False, 
+            'bootstrap_type': 'Bayesian', 
+            'iterations': 700, 
+            'learning_rate': 0.02273501424836124, 
+            'depth': 5, 
+            'l2_leaf_reg': 2.2500560852033615, 
+            'random_strength': 1.0274389459259032, 
+            'bagging_temperature': 0.4834678819225746},
         'LGBMClassifier': {
-            'metric': 'binary_logloss',
-            'verbose': -1,
-            'num_round': 100,
-            'max_depth': 4,
-            'num_leaves': 15,                
-            'min_child_samples': 15,
-            'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'reg_alpha': 0.1, 
-            'reg_lambda': 1.0,
-            'random_state': '${general.random_state}'
+            'random_state': '${general.random_state}',
+            'verbose': -1, 
+            'n_jobs': -1, 
+            'n_estimators': 450, 
+            'learning_rate': 0.09223630732225964, 
+            'num_leaves': 237, 
+            'max_depth': 4, 
+            'min_child_samples': 44, 
+            'subsample': 0.5571343990506431, 
+            'subsample_freq': 1, 
+            'colsample_bytree': 0.9801302473217693, 
+            'reg_alpha': 1.877176178394129e-05, 
+            'reg_lambda': 2.609503675904433e-05
         },
         'XGBClassifier': {
-            'n_estimators': 100,
-            'max_depth': 4,
-            'learning_rate': '${general.learning_rate}',
-            'objective': 'binary:logistic',
-            'min_child_weight': 3,
-            'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'reg_alpha': 0.1,
-            'reg_lambda': 1.0,
-            'random_state': '${general.random_state}'
+            'eval_metric': 'logloss', 
+            'random_state': '${general.random_state}', 
+            'n_jobs': -1, 
+            'n_estimators': 450, 
+            'learning_rate': 0.022379591615960075, 
+            'max_depth': 10, 
+            'min_child_weight': 2, 
+            'subsample': 0.7395324749096183, 
+            'colsample_bytree': 0.7374217679653282, 
+            'gamma': 0.00025392580097712816, 
+            'reg_alpha': 0.017726640689496854, 
+            'reg_lambda': 0.0001048736994376153
         },
     },
     'ensembles': {
