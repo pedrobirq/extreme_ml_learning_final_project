@@ -45,7 +45,6 @@ class TitanicDatasetPrepare:
                     col_min = self.statistics[f"{col}_min"]
                     col_max = self.statistics[f"{col}_max"]
 
-                # encoded_col = make_min_max_scaling(prep_df[col])
                 denom = (col_max - col_min) if (col_max - col_min) != 0 else 1.0
                 prep_df[col] = (prep_df[col] - col_min) / denom
 
@@ -78,20 +77,18 @@ class TitanicDatasetPrepare:
         }
         df_no_nulls['Initial'] = initials.map(lambda x: title_mapping.get(x, 'Other'))
 
+        # statistics save
         if self.is_train:
-            # Статистики возраста
             self.statistics['mean_age_by_initial'] = df_no_nulls.groupby('Initial')['Age'].mean().to_dict()
             self.statistics['global_mean_age'] = df_no_nulls['Age'].mean()
             
-            # Мода Embarked
             embarked_mode = df_no_nulls['Embarked'].mode()
             self.statistics['embarked_mode'] = embarked_mode.iloc[0] if not embarked_mode.empty else 'S'
             
-            # Средняя стоимость билета по Pclass
             self.statistics['mean_fare_by_pclass'] = df_no_nulls.groupby('Pclass')['Fare'].mean().to_dict()
             self.statistics['global_mean_fare'] = df_no_nulls['Fare'].mean()
 
-        # Применение статистик к текущему фолду
+        # statistics use
         mean_ages = self.statistics['mean_age_by_initial']
         global_age = self.statistics.get('global_mean_age', 28.0)
         for init, avg_age in mean_ages.items():
@@ -196,7 +193,7 @@ class TitanicDatasetPrepare:
 
 
 class TitanicDatasetPrepareNN(Dataset):
-    """ dNNs wrapper class for the titanic dataset """
+    """ NN wrapper class for the titanic dataset """
     def __init__(self, df: pd.DataFrame):
         if 'Survived' in df.columns:
             self.is_train = True

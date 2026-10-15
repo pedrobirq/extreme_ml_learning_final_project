@@ -151,40 +151,6 @@ def train_classification(model_class: str,
     return cv_metrics, models
 
 
-def objective(trial: optuna.Trial):
-    params = {
-        "loss_function": "Logloss",
-        "eval_metric": "F1",
-        "random_seed": config.general.random_state,
-        "verbose": False,
-        # Число деревьев и темп обучения
-        "iterations": trial.suggest_int("iterations", 300, 1200, step=100),
-        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
-        # Структура деревьев
-        "depth": trial.suggest_int("depth", 4, 10),
-        "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1.0, 10.0, log=True),
-        "random_strength": trial.suggest_float("random_strength", 1e-3, 10.0, log=True),
-        # Сэмплирование данных
-        "bootstrap_type": trial.suggest_categorical(
-            "bootstrap_type", ["Bayesian", "Bernoulli"]
-        ),
-    }
-
-    # Специфичные параметры для разных типов бутстрапа
-    if params["bootstrap_type"] == "Bayesian":
-        params["bagging_temperature"] = trial.suggest_float(
-            "bagging_temperature", 0.0, 1.0
-        )
-    elif params["bootstrap_type"] == "Bernoulli":
-        params["subsample"] = trial.suggest_float("subsample", 0.5, 1.0)
-
-    
-
-    f1_scores = train_classification('CatBoostClassifier', params, config.preprocessing_params, config, optuna_optimizing='f1_score')
-
-    return f1_scores
-
-
 def train_nn_classification(model,
                             optimizer_class, 
                             loss_class: str,
@@ -325,7 +291,6 @@ def train_nn_classification(model,
         early_stopping.restore_best_weights(model)
         best_metrics = early_stopping.best_metrics
     else:
-        # Если early stopping не использовался
         best_metrics = {
             'best_epoch': config.general.epochs,
             'val_loss': history['val_loss'][-1],
@@ -404,17 +369,17 @@ def create_objective(
     ):
     if model_class not in PARAMETERS_REGISTRY:
         raise ValueError(
-            f"Модель '{model_class}' не найдена в PARAMETERS_REGISTRY. "
-            f"Доступны: {list(PARAMETERS_REGISTRY.keys())}"
+            f"No '{model_class}' model in PARAMETERS_REGISTRY. "
+            f"Available models: {list(PARAMETERS_REGISTRY.keys())}"
         )
 
     param_sampler = PARAMETERS_REGISTRY[model_class]
 
     def objective(trial: optuna.Trial) -> float:
-        # 1. Получаем объединенные (базовые + настраиваемые) параметры для текущего trial
+        # get base + need tune parameters
         current_params = param_sampler(trial)
 
-        # 2. Вызываем кросс-валидацию по заранее подготовленным фолдам
+        # run cv
         score = train_classification(
             model_class=model_class,
             model_params=current_params,
@@ -428,7 +393,6 @@ def create_objective(
 
 
 def run_optuna(model_name: str, target_metric: str, folds: list, n_trials=30, timeout=600):
-    # 3. Создаем сэмплер и исследование Optuna
     sampler = optuna.samplers.TPESampler(seed=config.general.random_state)
     study = optuna.create_study(
         direction="maximize",
@@ -436,7 +400,6 @@ def run_optuna(model_name: str, target_metric: str, folds: list, n_trials=30, ti
         study_name=f"{model_name}_{target_metric}_optimization",
     )
 
-    # 4. Создаем objective через фабрику и запускаем поиск
     objective = create_objective(
         model_class=model_name,
         folds=folds,
@@ -445,18 +408,12 @@ def run_optuna(model_name: str, target_metric: str, folds: list, n_trials=30, ti
 
     study.optimize(objective, n_trials=n_trials, timeout=timeout, show_progress_bar=True)
 
-    print(f"\n[Optuna] Подбор завершен для {model_name}!")
-    print(f"[Optuna] Лучший результат {target_metric}: {study.best_value:.5f}")
+    print(f"\n[Optuna] Search done for {model_name}!")
+    print(f"[Optuna] Best {target_metric} restult: {study.best_value:.5f}")
 
-    # 5. Восстанавливаем ПОЛНЫЙ набор параметров (базовые + подобранные Optuna)
+    # full model parameters
     base_params = PARAMETERS_REGISTRY[model_name](None)
     final_best_params = {**base_params, **study.best_params}
 
-    # Если в LogisticRegression использовался префикс (solver_l1 / solver_l2), нормализуем ключ solver:
-    # if model_name == "LogisticRegression":
-    #     for solver_key in ["solver_l1", "solver_l2"]:
-    #         if solver_key in final_best_params:
-    #             final_best_params["solver"] = final_best_params.pop(solver_key)
-
-    print("\nПолный словарь параметров для финальной модели:")
+    print("\nFull parameters dictionary for the best model:")
     print(final_best_params)

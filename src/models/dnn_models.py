@@ -137,15 +137,14 @@ class EarlyStopping:
             self.best_metrics = metrics.copy()
             self.best_metrics["best_epoch"] = epoch
 
-            # 1. Быстрое сохранение весов в оперативной памяти (CPU RAM)
-            # clone() и detach() разрывают вычислительный граф и изолируют тензоры
+            # model weights clone to RAM
             self.best_state_dict = {
                 k: v.detach().cpu().clone() for k, v in model.state_dict().items()
             }
             if self.save_optimizer and optimizer is not None:
                 self.best_optimizer_state_dict = copy.deepcopy(optimizer.state_dict())
 
-            # 2. Опциональная запись на диск (только если явно требуется)
+            # Опциональная запись на диск (только если явно требуется)
             if self.save_to_disk and self.checkpoint_path is not None:
                 self._save_checkpoint(epoch, metrics)
         else:
@@ -176,14 +175,14 @@ class EarlyStopping:
         """
         target_device = device if device is not None else next(model.parameters()).device
 
-        # Восстановление из RAM
+        # get from RAM
         if self.best_state_dict is not None:
             model.load_state_dict(
                 {k: v.to(target_device) for k, v in self.best_state_dict.items()}
             )
             return
 
-        # Запасной вариант: восстановление с диска
+        # get from disc
         if self.save_to_disk and self.checkpoint_path and self.checkpoint_path.exists():
             checkpoint = torch.load(
                 self.checkpoint_path, map_location=target_device, weights_only=True

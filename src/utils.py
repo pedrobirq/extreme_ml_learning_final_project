@@ -1,7 +1,6 @@
 import pandas as pd
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, mean_absolute_error, r2_score, mean_squared_error, root_mean_squared_error
 
 
 # ~~~~~~~~~~~ Preprocessing ~~~~~~~~~~~ 

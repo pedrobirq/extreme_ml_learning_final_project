@@ -1,4 +1,4 @@
-from src.train_functions import train_classification, run_all_models, make_test_predictions, objective, make_folds, run_optuna
+from src.train_functions import train_classification, run_all_models, make_test_predictions, make_folds, run_optuna
 from src import utils
 from src.models.registry import MODEL_PARAMS
 from configs.config_titanic import config

@@ -1,4 +1,5 @@
-# Common pipeline for Titanic and House prices datasets
+# The titanic competition pipeline
+
 ## Getting started 
 *How to create environment and start the main pipeline:*
 ```
@@ -37,19 +38,17 @@ run_optuna(model_name=MODEL_NAME,
             folds=folds)
 ```
 
-
-## Exploring the pipeline
-
-- `main.py` - the main script that starts the whole pipeline of training models for both tasks and shows a table of metrics;
-- `config.py` - configuration of the pipeline and models;
-- `utils.py` - a set of fuctions and classes used through the whole pipeline;
-- `train_functions.py` - a set of functions to train models;
-- `objects/datasets.py` - dataset preparation code;
-- `objects/dnn_models.py` - deep learning model architectures;
-- `EDA.ipynb` - exploration Data Analysis for both tasks; 
-- `draft.ipynb` - just some random code.
-
 ## Competition results
-- The best metric for the Titanic competition is `0.77990` obtained from simple neural network with two layers.
-- The best metric for the House Prices competition is `0.12044` obtained from CatBoost. 
+
+| №   | Approach                                                                          | CV       | CV STD   | LB      |
+| --- | --------------------------------------------------------------------------------- | -------- | -------- | ------- |
+| 1   | LogisticRegression                                                                | 0.767934 | 0.035774 | 0.78229 |
+| 2   | SimpNN                                                                            | 0.761926 | 0.014176 | 0.78708 |
+| 3   | ImprovedNN                                                                        | 0.752124 | 0.024689 | 0.78229 |
+| 4   | ImprovedNN + CosineLR                                                             | 0.758660 | 0.033222 | 0.77033 |
+| 5   | LogReg + Age and Fare features distrubition normalized with `QuantileTransformer` | 0.768418 | 0.020882 | 0.77990 |
+| 6   | LogReg + only Fare feature distrubition normalized with `QuantileTransformer`     | 0.770917 | 0.023894 | 0.77751 |
+| 7   | CatBoostClassifier optuna tuned                                                   | 0.765641 | 0.038901 | 0.75358 |
+| **8**   | **LogisticRegression optuna tuned with elasticnet**                                   | 0.771410 | 0.018839 | 0.78708 |
+
 
